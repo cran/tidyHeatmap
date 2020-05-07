@@ -1,9 +1,19 @@
 tidyHeatmap
 ================
 
-This package is a tidy wrapper of the package
+(If you like tidyverse and RNA, try
+[tidybulk](https://github.com/stemangiola/tidybulk) for tidy and modular
+transcriptomics
+analyses\!)
+
+<!-- badges: start -->
+
+[![Lifecycle:maturing](https://img.shields.io/badge/lifecycle-maturing-blue.svg)](https://www.tidyverse.org/lifecycle/#maturing)
+<!-- badges: end -->
+
+Tidy heatmap. This package is a tidy wrapper of the package
 [ComplexHeatmap](https://bioconductor.org/packages/release/bioc/html/ComplexHeatmap.html).
-The goal of this package is to interface a tidy data frame with this
+The goal of this package is to interface tidy data frames with this
 powerful tool.
 
 Some of the advantages are:
@@ -15,72 +25,107 @@ Some of the advantages are:
   - Labels size adjusted by row and column total number
   - Default use of Brewer and Viridis palettes
 
-## Input data frame
+# Installation
 
-The input data frameha sto be a tidy `tbl` of this form
+To install the most up-to-date version
 
 ``` r
-tidyHeatmap::pasilla
+devtools::install_github("stemangiola/tidyHeatmap")
 ```
 
-    ## # A tibble: 504 x 6
-    ##    sample     symbol `count normalised adjust… condition type       location    
-    ##    <chr>      <fct>                      <int> <fct>     <fct>      <chr>       
-    ##  1 treated1   Kal1                          37 treated   single-re… Secretory   
-    ##  2 treated2   Kal1                          41 treated   paired-end Secretory   
-    ##  3 treated3   Kal1                          50 treated   paired-end Secretory   
-    ##  4 untreated1 Kal1                        1127 untreated single-re… Secretory   
-    ##  5 untreated2 Kal1                        1046 untreated single-re… Secretory   
-    ##  6 untreated3 Kal1                         932 untreated paired-end Secretory   
-    ##  7 untreated4 Kal1                        1018 untreated paired-end Secretory   
-    ##  8 treated1   Ant2                        2331 treated   single-re… Intracellul…
-    ##  9 treated2   Ant2                        2478 treated   paired-end Intracellul…
-    ## 10 treated3   Ant2                        2575 treated   paired-end Intracellul…
-    ## # … with 494 more rows
+To install the most stable version (however please keep in mind that
+this package is under a maturing lifecycle stage)
 
-Where mandatory column are `sample`, `transcript`, count (named as you
-wish)
+``` r
+install.packages("tidyHeatmap")
+```
 
-## Plot
+# Input data frame
+
+``` r
+mtcars_tidy = 
+    mtcars %>% 
+    as_tibble(rownames="Car name") %>% 
+    
+    # Scale
+    mutate_at(vars(-`Car name`, -hp, -vs), scale) %>%
+    
+    # tidyfy
+    gather(Property, Value, -`Car name`, -hp, -vs)
+
+mtcars_tidy
+```
+
+    ## # A tibble: 288 x 5
+    ##    `Car name`           hp    vs Property  Value
+    ##    <chr>             <dbl> <dbl> <chr>     <dbl>
+    ##  1 Mazda RX4           110     0 mpg       0.151
+    ##  2 Mazda RX4 Wag       110     0 mpg       0.151
+    ##  3 Datsun 710           93     1 mpg       0.450
+    ##  4 Hornet 4 Drive      110     1 mpg       0.217
+    ##  5 Hornet Sportabout   175     0 mpg      -0.231
+    ##  6 Valiant             105     1 mpg      -0.330
+    ##  7 Duster 360          245     0 mpg      -0.961
+    ##  8 Merc 240D            62     1 mpg       0.715
+    ##  9 Merc 230             95     1 mpg       0.450
+    ## 10 Merc 280            123     1 mpg      -0.148
+    ## # … with 278 more rows
+
+# Plot
 
 For plotting, you simply pipe the input data frame into heatmap,
 specifying:
 
-  - The horizontal, vertical relative column names (mandatory)
-  - The abundance column name (mandatory)
+  - The rows, cols relative column names (mandatory)
+  - The value column name (mandatory)
   - The annotations column name(s)
 
-<!-- end list -->
+mtcars
 
 ``` r
-tidyHeatmap::pasilla %>%
+mtcars_tidy %>% 
     heatmap(
-        .horizontal = sample,
-        .vertical = symbol,
-        .abundance = `count normalised adjusted`,
-        annotation = c(condition, type),
-        log_transform = TRUE
+        `Car name`, 
+        Property, 
+        Value,
+        annotation = hp
     )
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-3-1.png)<!-- -->
+![](README_files/figure-gfm/unnamed-chunk-5-1.png)<!-- -->
 
-## Grouping
+# Grouping
 
 We can easily group the data (one group per dimension maximum, at the
 moment only the vertical dimension is supported) with dplyr, and the
 heatmap will be grouped accordingly
 
 ``` r
-tidyHeatmap::pasilla %>%
-    group_by(location) %>%
+mtcars_tidy %>% 
+    group_by(vs) %>%
     heatmap(
-        .horizontal = sample,
-        .vertical = symbol,
-        .abundance = `count normalised adjusted`,
-        annotation = c(condition, type),
-        log_transform = TRUE
+        `Car name`, 
+        Property, 
+        Value,
+        annotation = hp
     )
 ```
 
-![](README_files/figure-gfm/unnamed-chunk-4-1.png)<!-- -->
+![](README_files/figure-gfm/unnamed-chunk-6-1.png)<!-- -->
+
+# Custom palettes
+
+We can easily use custom palette, chooinga hexadecimal color character
+vector, or a grid::colorRamp2 functionfor higher flexibility
+
+``` r
+mtcars_tidy %>% 
+    heatmap(
+        `Car name`, 
+        Property, 
+        Value,
+        palette_value = circlize::colorRamp2(c(-2, -1, 0, 1, 2), viridis::magma(5))
+    )
+```
+
+![](README_files/figure-gfm/unnamed-chunk-7-1.png)<!-- -->

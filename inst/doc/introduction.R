@@ -1,34 +1,61 @@
 ## ---- echo=FALSE, include=FALSE-----------------------------------------------
 library(knitr)
-knitr::opts_chunk$set(cache = TRUE, warning = FALSE, 
-                      message = FALSE, cache.lazy = FALSE)
+knitr::opts_chunk$set(cache = TRUE, warning = FALSE, message = FALSE, cache.lazy = FALSE)
 
 library(magrittr)
 library(dplyr)
+library(tidyr)
 library(tidyHeatmap)
 
 
-## -----------------------------------------------------------------------------
-pasilla
+## ---- eval=FALSE--------------------------------------------------------------
+#  
+#  devtools::install_github("stemangiola/tidyHeatmap")
+#  
+
+## ---- eval=FALSE--------------------------------------------------------------
+#  
+#  install.packages("tidyHeatmap")
+#  
 
 ## -----------------------------------------------------------------------------
-pasilla %>%
+mtcars_tidy = 
+	mtcars %>% 
+	as_tibble(rownames="Car name") %>% 
+	
+	# Scale
+	mutate_at(vars(-`Car name`, -hp, -vs), scale) %>%
+	
+	# tidyfy
+	gather(Property, Value, -`Car name`, -hp, -vs)
+
+mtcars_tidy
+
+## -----------------------------------------------------------------------------
+mtcars_tidy %>% 
 	heatmap(
-		.horizontal = sample,
-		.vertical = symbol,
-		.abundance = `count normalised adjusted`,
-		annotation = c(condition, type),
-		log_transform = TRUE
+		`Car name`, 
+		Property, 
+		Value,
+		annotation = hp
 	)
 
 ## -----------------------------------------------------------------------------
-pasilla %>%
-	group_by(location) %>%
+mtcars_tidy %>% 
+	group_by(vs) %>%
 	heatmap(
-		.horizontal = sample,
-		.vertical = symbol,
-		.abundance = `count normalised adjusted`,
-		annotation = c(condition, type),
-		log_transform = TRUE
+		`Car name`, 
+		Property, 
+		Value,
+		annotation = hp
+	)
+
+## -----------------------------------------------------------------------------
+mtcars_tidy %>% 
+	heatmap(
+		`Car name`, 
+		Property, 
+		Value,
+		palette_value = circlize::colorRamp2(c(-2, -1, 0, 1, 2), viridis::magma(5))
 	)
 
