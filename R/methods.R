@@ -9,6 +9,7 @@
 #' @importFrom stats sd
 #' @importFrom lifecycle is_present
 #' @importFrom lifecycle deprecate_warn
+#' 
 #'
 #' @name heatmap
 #' @rdname heatmap
@@ -18,7 +19,9 @@
 #' @param .column The name of the column horizontally presented in the heatmap
 #' @param .value The name of the transcript/gene abundance column
 #' @param annotation Vector of quotes
-#' @param transform A function, used to tranform .value, for example log
+#' @param type A character vector of the set c(\"tile\", \"point\", \"bar\", \"line\")
+#' @param transform A function, used to tranform .value row-wise (e.g., transform = log1p)
+#' @param .scale A character string. Possible values are c(\"none\", \"row\", \"column\", \"both\")
 #' @param palette_value A character vector This is the palette that will be used as gradient for .value
 #' @param palette_discrete A list of character vectors. This is the list of palettes that will be used for horizontal and vertical discrete annotations. The discrete classification of annotations depends on the column type of your input tibble (e.g., character and factor).
 #' @param palette_continuous A list of character vectors. This is the list of palettes that will be used for horizontal and vertical continuous annotations. The continuous classification of annotations depends on the column type of your input tibble (e.g., integer, numerical, double).
@@ -55,7 +58,9 @@ heatmap <-
 					 .column,
 					 .value,
 					 annotation = NULL,
+					 type = rep("tile", length(quo_names(annotation))),
 					 transform = NULL,
+					 .scale = "row",
 					 palette_value = c("#440154FF", "#21908CFF", "#fefada" ),
 					 palette_discrete = list(),
 					 palette_continuous = list(),
@@ -67,6 +72,9 @@ heatmap <-
 					 ...) {
 		UseMethod("heatmap", .data)
 	}
+
+#' Creates a  `ComplexHeatmap` plot from `tbl_df`
+#' @inheritParams heatmap
 #' @export
 heatmap.default <-
 	function(.data,
@@ -74,7 +82,9 @@ heatmap.default <-
 					 .column,
 					 .value,
 					 annotation = NULL,
+					 type = rep("tile", length(quo_names(annotation))),
 					 transform = NULL,
+					 .scale = "row",
 					 palette_value = c("#440154FF", "#21908CFF", "#fefada" ),
 					 palette_discrete = list(),
 					 palette_continuous = list(),
@@ -87,6 +97,9 @@ heatmap.default <-
 	{
 		message("tidyHeatmap::heatmap function cannot be applied to this object. Please input a tibble (tbl_df) object.")
 	}
+
+#' Creates a  `ComplexHeatmap` plot from `tbl_df`
+#' @inheritParams heatmap
 #' @export
 heatmap.tbl_df <-
 	function(.data,
@@ -94,7 +107,9 @@ heatmap.tbl_df <-
 					 .column,
 					 .value,
 					 annotation = NULL,
+					 type = rep("tile", length(quo_names(annotation))),
 					 transform = NULL,
+					 .scale = "row",
 					 palette_value = c("#440154FF", "#21908CFF", "#fefada" ),
 					 palette_discrete = list(),
 					 palette_continuous = list(),
@@ -116,6 +131,13 @@ heatmap.tbl_df <-
 		
 		# Check if transform is of correct type
 		if(!(is.null(transform) || is_function(transform))) stop("tidyHeatmap says: transform has to be a function. is_function(transform) == TRUE")
+		
+		# Check if .scale is of correct type
+		if(.scale %in% c("none", "row", "column", "both") %>% `!`) stop("tidyHeatmap says: the .scale parameter has to be one of c(\"none\", \"row\", \"column\", \"both\")")
+
+		# Check if type is of the right kind
+		if(type %>% setdiff(names(type_to_annot_function)) %>% length %>% `>` (0))
+			stop("tidyHeatmap says: not all components of `type` parameter are valid.")
 		
 		# Deprecation .abundance
 		
@@ -193,7 +215,9 @@ heatmap.tbl_df <-
 			.vertical = !!.row,
 			.abundance = !!.value,
 			annotation = !!annotation,
+			type = type,
 			transform = transform,
+			.scale = .scale,
 			palette_abundance = palette_value,
 			palette_discrete = palette_discrete,
 			palette_continuous = palette_continuous,
@@ -203,4 +227,83 @@ heatmap.tbl_df <-
 	}
 
 
+#' Save plot on PDF file
+#'
+#' \lifecycle{maturing}
+#' 
+#' @importFrom utils capture.output
+#' @import  grDevices
+#'
+#' @description save_pdf() takes as input a Heatmap from ComplexHeatmap and save it to PDF file
+#'
+#'
+#' @name save_pdf
+#'
+#' @param .heatmap A `Heatmap` 
+#' @param filename A character string. The name of the output file/path
+#' @param width A `double`. Plot width
+#' @param height A `double`. Plot height
+#' @param units	A character string. units ("in", "cm", or "mm")
+#' 
+#' @details It simply save an `Heatmap` to a PDF file use pdf() function in the back end
+#'
+#' @return NA
+#'
+#'
+#' @examples
+#' 
+#' 
+#' library(dplyr)
+#' 	tidyHeatmap::heatmap(
+#'   dplyr::group_by(tidyHeatmap::pasilla,		location, type),
+#'   .column = sample,
+#'   .row = symbol,
+#'   .value = `count normalised adjusted`,
+#'  ) %>%
+#'  save_pdf(tempfile())
+#'
+#' 
+#' @docType methods
+#' @rdname save_pdf-methods
+#' @export
+#'
+setGeneric("save_pdf", function(.heatmap,
+																filename,
+																width = NULL,
+																height = NULL,
+																units = c("in", "cm", "mm") )
+	standardGeneric("save_pdf"))
+
+.save_pdf = function(.heatmap,
+										 filename,
+										 width = NULL,
+										 height = NULL,
+										 units = c("in", "cm", "mm")){
+	
+	# Adapt to ggsave
+	if(is.null(width)) width = NA
+	if(is.null(height)) height = NA
+	
+	
+	dev = plot_dev("pdf", filename)
+	dim <- plot_dim(c(width, height), units = units)
+	
+	old_dev <- dev.cur()
+	dev(filename = filename, width = dim[1], height = dim[2])
+	on.exit(capture.output({
+		dev.off()
+		if (old_dev > 1) dev.set(old_dev) # restore old device unless null device
+	}))
+	print(.heatmap)
+	
+	invisible()
+	
+}
+
+#' save_pdf
+#' 
+#' @inheritParams save_pdf
+#' 
+#' @export
+setMethod("save_pdf", "Heatmap", .save_pdf)
 
