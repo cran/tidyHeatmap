@@ -1,12 +1,17 @@
 Type: Package
 Package: tidyHeatmap
 Title: A Tidy Implementation of Heatmap
-Version: 1.0.1
+Version: 1.1.4
 Authors@R: 
-    person(given = "Stefano",
+    c(person(given = "Stefano",
            family = "Mangiola",
            role = c("aut", "cre"),
-           email = "mangiolastefano@gmail.com")
+           email = "mangiolastefano@gmail.com"),
+           person(given = "Anthony",
+           family = "Papenfuss",
+           role = c("ctb"),
+           email = "papenfuss@wehi.edu.au")
+           )
 Maintainer: Stefano Mangiola <mangiolastefano@gmail.com>
 Description: This is a tidy implementation for heatmap.  At the
     moment it is based on the (great) package 'ComplexHeatmap'.  The goal
@@ -21,21 +26,25 @@ License: GPL-3
 URL: https://www.r-project.org,
         https://github.com/stemangiola/tidyHeatmap
 BugReports: https://github.com/stemangiola/tidyHeatmap
-Depends: R (>= 3.6), ComplexHeatmap (>= 2.2.0)
+Depends: R (>= 3.6)
 Imports: methods, stats, utils, dplyr (>= 0.8.5), magrittr (>= 1.5),
-        tidyr (>= 1.0.3), rlang (>= 0.4.5), purrr (>= 0.3.3), viridis
-        (>= 0.5.1), circlize (>= 0.4.8), RColorBrewer (>= 1.1), grid,
-        grDevices, lifecycle (>= 0.2.0)
-Suggests: testthat, BiocManager, knitr, rmarkdown, qpdf, covr, roxygen2
+        tidyr (>= 1.0.3), rlang (>= 0.4.5), purrr (>= 0.3.3),
+        ComplexHeatmap (>= 2.2.0), viridis (>= 0.5.1), circlize (>=
+        0.4.8), RColorBrewer (>= 1.1), grid, grDevices, lifecycle (>=
+        0.2.0)
+Suggests: spelling, testthat, vdiffr, BiocManager, knitr, rmarkdown,
+        qpdf, covr, roxygen2
 VignetteBuilder: knitr
 RdMacros: lifecycle
 Biarch: true
 biocViews: AssayDomain, Infrastructure
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.1.0
+RoxygenNote: 7.1.1
+Language: en-US
 NeedsCompilation: no
-Packaged: 2020-06-23 05:53:31 UTC; mangiola.s
-Author: Stefano Mangiola [aut, cre]
+Packaged: 2020-08-07 08:31:16 UTC; mangiola.s
+Author: Stefano Mangiola [aut, cre],
+  Anthony Papenfuss [ctb]
 Repository: CRAN
-Date/Publication: 2020-06-23 06:20:02 UTC
+Date/Publication: 2020-08-07 09:20:02 UTC

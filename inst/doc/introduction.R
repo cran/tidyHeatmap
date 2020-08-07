@@ -19,6 +19,11 @@ library(purrr)
 #  install.packages("tidyHeatmap")
 #  
 
+## ---- echo=FALSE, include=FALSE-----------------------------------------------
+library(dplyr)
+library(tidyr)
+library(tidyHeatmap)
+
 ## -----------------------------------------------------------------------------
 mtcars_tidy = 
 	mtcars %>% 
@@ -35,28 +40,19 @@ mtcars_tidy
 ## -----------------------------------------------------------------------------
 mtcars_heatmap = 
 	mtcars_tidy %>% 
-		heatmap(
-			`Car name`, 
-			Property, 
-			Value,
-			annotation = hp
-		)
+		heatmap(`Car name`, Property, Value	) %>%
+		add_tile(hp)
 
 mtcars_heatmap
 
 ## ----eval=F-------------------------------------------------------------------
-#  mtcars_heatmap %>%
-#  	save_pdf("mtcars_heatmap.pdf")
+#  mtcars_heatmap %>% save_pdf("mtcars_heatmap.pdf")
 
 ## -----------------------------------------------------------------------------
 mtcars_tidy %>% 
 	group_by(vs) %>%
-	heatmap(
-		`Car name`, 
-		Property, 
-		Value,
-		annotation = hp
-	)
+	heatmap(`Car name`, Property, Value	) %>%
+	add_tile(hp)
 
 ## -----------------------------------------------------------------------------
 mtcars_tidy %>% 
@@ -82,12 +78,13 @@ tidyHeatmap::pasilla %>%
 	heatmap(
 			.column = sample,
 			.row = symbol,
-			.value = `count normalised adjusted`,
-			annotation = c(condition, activation)
-		)
+			.value = `count normalised adjusted`
+		) %>%
+	add_tile(condition) %>%
+	add_tile(activation)
 
 ## -----------------------------------------------------------------------------
-# Chreate some more data points
+# Create some more data points
 pasilla_plus = 
 	tidyHeatmap::pasilla %>%
 		dplyr::mutate(act = activation) %>% 
@@ -98,11 +95,14 @@ pasilla_plus =
 
 # Plot
 pasilla_plus %>%
-		tidyHeatmap::heatmap(
+		heatmap(
 			.column = sample,
 			.row = symbol,
-			.value = `count normalised adjusted`,
-			annotation = c(condition, activation, act, size, age),
-			type = c("tile", "point", "tile", "bar", "line")
-		)
+			.value = `count normalised adjusted`
+		) %>%
+	add_tile(condition) %>%
+	add_point(activation) %>%
+	add_tile(act) %>%
+	add_bar(size) %>%
+	add_line(age)
 
