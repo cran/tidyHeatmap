@@ -93,19 +93,14 @@ setMethod("show", "InputHeatmap", function(object){
 #' @param .value The name of the column for the value of the element/feature pair
 #' @param transform A function, used to transform .value row-wise (e.g., transform = log1p)
 #' @param .scale A character string. Possible values are c(\"none\", \"row\", \"column\", \"both\")
-#' @param palette_value A character vector This is the palette that will be used as gradient for .value. For higher flexibility you can use circlize::colorRamp2\(c\(-2, -1, 0, 1, 2\), viridis::magma\(5\)\)
-#' @param palette_grouping A list of character vectors. This is the list of palettes that will be used for grouping 
+#' @param palette_value A character vector This is the palette that will be used as gradient for .value. For example c("red", "white", "blue"). For higher flexibility you can use circlize::colorRamp2\(c\(-2, -1, 0, 1, 2\), viridis::magma\(5\)\)
+#' @param palette_grouping A list of character vectors. This is the list of palettes that will be used for grouping. For example list(RColorBrewer::brewer.pal(8, "Accent")) or list(c("#B3E2CD", "#FDCDAC", "#CBD5E8")) or list(c("black", "red")) 
 #' @param ... Further arguments to be passed to ComplexHeatmap::Heatmap
 #' 
 #' @param annotation DEPRECATED. please use the annotation functions add_* function \(\* one of tile, point, bar, line  \).
 #' @param type DEPRECATED. please use the annotation functions add_* function \(\* one of tile, point, bar, line  \).
 #' @param palette_discrete DEPRECATED. please use the annotation functions add_* function \(\* one of tile, point, bar, line  \).
 #' @param palette_continuous DEPRECATED. please use the annotation functions add_* function \(\* one of tile, point, bar, line  \).
-#' @param .horizontal DEPRECATED. Please use .column instead
-#' @param .vertical DEPRECATED. Please use .row instead
-#' @param .abundance DEPRECATED. Please use .value instead
-#' @param log_transform DEPRECATED. Please use transform instead
-#' @param palette_abundance DEPRECATED. Please use palette_value instead
 #'
 #' @details This function takes a tbl as an input and creates a `ComplexHeatmap` plot. The information is stored in a `InputHeatmap` object that is updated along the pipe statement, for example adding annotation layers. 
 #'
@@ -143,11 +138,6 @@ setGeneric("heatmap", function(.data,
 															 type = rep("tile", length(quo_names(annotation))),
 															 palette_discrete = list(),
 															 palette_continuous = list(),
-															 .abundance  = NULL,
-															 .horizontal = NULL,
-															 .vertical = NULL,
-															 log_transform = NULL,
-															 palette_abundance = NULL,
 															 ...) standardGeneric("heatmap"))
 
 #' Creates a  `InputHeatmap` object from `tbl_df` on evaluation creates a `ComplexHeatmap`
@@ -173,20 +163,12 @@ heatmap_ <-
 					 type = rep("tile", length(quo_names(annotation))),
 					 palette_discrete = list(),
 					 palette_continuous = list(),
-					 .abundance  = NULL,
-					 .horizontal = NULL,
-					 .vertical = NULL,
-					 log_transform = NULL,
-					 palette_abundance = NULL,
 					 ...)
 	{
 		# Comply with CRAN NOTES
 		. = NULL
 		
 		# Make col names
-		.horizontal = enquo(.horizontal) # DEPRECATED
-		.vertical = enquo(.vertical) # DEPRECATED
-		.abundance = enquo(.abundance) # DEPRECATED
 		annotation = enquo(annotation)
 		
 		# Check if transform is of correct type
@@ -199,60 +181,6 @@ heatmap_ <-
 		if(type %>% setdiff(names(type_to_annot_function)) %>% length %>% gt(0))
 			stop("tidyHeatmap says: not all components of `type` parameter are valid.")
 		
-		# Deprecation .abundance
-		
-		if (is_present(.abundance) & !quo_is_null(.abundance)) {
-			
-			# Signal the deprecation to the user
-			deprecate_warn("0.99.11", "tidyHeatmap::heatmap(.abundance = )", "tidyHeatmap::heatmap(.value = )")
-			
-			# Deal with the deprecated argument for compatibility
-			.value <- enquo(.abundance)
-		}
-		
-		# Deprecation .horizontal
-		
-		if (is_present(.horizontal) & !quo_is_null(.horizontal)) {
-			
-			# Signal the deprecation to the user
-			deprecate_warn("0.99.12", "tidyHeatmap::heatmap(.horizontal = )", "tidyHeatmap::heatmap(.column = )")
-			
-			# Deal with the deprecated argument for compatibility
-			.column <- enquo(.horizontal)
-		}
-		
-		# Deprecation .vertical
-		
-		if (is_present(.vertical) & !quo_is_null(.vertical)) {
-			
-			# Signal the deprecation to the user
-			deprecate_warn("0.99.12", "tidyHeatmap::heatmap(.vertical = )", "tidyHeatmap::heatmap(.row = )")
-			
-			# Deal with the deprecated argument for compatibility
-			.row <- enquo(.vertical)
-		}
-		
-		# Deprecation log_transform
-		
-		if (is_present(log_transform) & !is.null(log_transform)) {
-			
-			# Signal the deprecation to the user
-			deprecate_warn("0.99.13", "tidyHeatmap::heatmap(log_transform = )", "tidyHeatmap::heatmap(transform = )")
-			
-			# Deal with the deprecated argument for compatibility
-			if(log_transform) transform <- log
-		}
-		
-		# Deprecation palette_abundance
-		
-		if (is_present(palette_abundance) & !is.null(palette_abundance)) {
-			
-			# Signal the deprecation to the user
-			deprecate_warn("0.99.15", "tidyHeatmap::heatmap(palette_abundance = )", "tidyHeatmap::heatmap(palette_value = )")
-			
-			# Deal with the deprecated argument for compatibility
-			palette_value <- palette_abundance
-		}
 		
 		.row = enquo(.row)
 		.column = enquo(.column)
@@ -277,7 +205,7 @@ heatmap_ <-
 										type = type,
 										transform = transform,
 										.scale = .scale,
-										palette_abundance = palette_value,
+										palette_value = palette_value,
 										palette_discrete = palette_discrete,
 										palette_continuous = palette_continuous,
 										...
@@ -300,7 +228,7 @@ heatmap_ <-
 				.abundance = !!.value,
 				transform = transform,
 				.scale = .scale,
-				palette_abundance = palette_value,
+				palette_value = palette_value,
 				palette_grouping = palette_grouping,
 				...
 			)		%>%

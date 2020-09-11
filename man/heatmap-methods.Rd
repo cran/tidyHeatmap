@@ -22,11 +22,6 @@ heatmap(
   type = rep("tile", length(quo_names(annotation))),
   palette_discrete = list(),
   palette_continuous = list(),
-  .abundance = NULL,
-  .horizontal = NULL,
-  .vertical = NULL,
-  log_transform = NULL,
-  palette_abundance = NULL,
   ...
 )
 
@@ -43,11 +38,6 @@ heatmap_(
   type = rep("tile", length(quo_names(annotation))),
   palette_discrete = list(),
   palette_continuous = list(),
-  .abundance = NULL,
-  .horizontal = NULL,
-  .vertical = NULL,
-  log_transform = NULL,
-  palette_abundance = NULL,
   ...
 )
 
@@ -64,11 +54,6 @@ heatmap_(
   type = rep("tile", length(quo_names(annotation))),
   palette_discrete = list(),
   palette_continuous = list(),
-  .abundance = NULL,
-  .horizontal = NULL,
-  .vertical = NULL,
-  log_transform = NULL,
-  palette_abundance = NULL,
   ...
 )
 
@@ -85,11 +70,6 @@ heatmap_(
   type = rep("tile", length(quo_names(annotation))),
   palette_discrete = list(),
   palette_continuous = list(),
-  .abundance = NULL,
-  .horizontal = NULL,
-  .vertical = NULL,
-  log_transform = NULL,
-  palette_abundance = NULL,
   ...
 )
 
@@ -106,11 +86,6 @@ heatmap_(
   type = rep("tile", length(quo_names(annotation))),
   palette_discrete = list(),
   palette_continuous = list(),
-  .abundance = NULL,
-  .horizontal = NULL,
-  .vertical = NULL,
-  log_transform = NULL,
-  palette_abundance = NULL,
   ...
 )
 }
@@ -127,9 +102,9 @@ heatmap_(
 
 \item{.scale}{A character string. Possible values are c(\"none\", \"row\", \"column\", \"both\")}
 
-\item{palette_value}{A character vector This is the palette that will be used as gradient for .value. For higher flexibility you can use circlize::colorRamp2\(c\(-2, -1, 0, 1, 2\), viridis::magma\(5\)\)}
+\item{palette_value}{A character vector This is the palette that will be used as gradient for .value. For example c("red", "white", "blue"). For higher flexibility you can use circlize::colorRamp2\(c\(-2, -1, 0, 1, 2\), viridis::magma\(5\)\)}
 
-\item{palette_grouping}{A list of character vectors. This is the list of palettes that will be used for grouping}
+\item{palette_grouping}{A list of character vectors. This is the list of palettes that will be used for grouping. For example list(RColorBrewer::brewer.pal(8, "Accent")) or list(c("#B3E2CD", "#FDCDAC", "#CBD5E8")) or list(c("black", "red"))}
 
 \item{annotation}{DEPRECATED. please use the annotation functions add_* function \(\* one of tile, point, bar, line  \).}
 
@@ -138,16 +113,6 @@ heatmap_(
 \item{palette_discrete}{DEPRECATED. please use the annotation functions add_* function \(\* one of tile, point, bar, line  \).}
 
 \item{palette_continuous}{DEPRECATED. please use the annotation functions add_* function \(\* one of tile, point, bar, line  \).}
-
-\item{.abundance}{DEPRECATED. Please use .value instead}
-
-\item{.horizontal}{DEPRECATED. Please use .column instead}
-
-\item{.vertical}{DEPRECATED. Please use .row instead}
-
-\item{log_transform}{DEPRECATED. Please use transform instead}
-
-\item{palette_abundance}{DEPRECATED. Please use palette_value instead}
 
 \item{...}{Further arguments to be passed to ComplexHeatmap::Heatmap}
 }
