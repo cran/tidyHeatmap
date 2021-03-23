@@ -3,21 +3,27 @@ tidyHeatmap
 
 <!-- badges: start -->
 
-[![Lifecycle:maturing](https://img.shields.io/badge/lifecycle-maturing-blue.svg)](https://www.tidyverse.org/lifecycle/#maturing)
+[![Lifecycle:maturing](https://img.shields.io/badge/lifecycle-maturing-blue.svg)](https://lifecycle.r-lib.org/articles/stages.html)
 [![DOI](https://joss.theoj.org/papers/10.21105/joss.02472/status.svg)](https://doi.org/10.21105/joss.02472)
 <!-- badges: end -->
 
 Please have a look also to
 
-  - [nanny](https://github.com/stemangiola/nanny) for tidy high-level
+  - [nanny](https://github.com/stemangiola/nanny/) for tidy high-level
     data analysis and manipulation
-  - [tidygate](https://github.com/stemangiola/tidygate) for adding
+  - [tidygate](https://github.com/stemangiola/tidygate/) for adding
     custom gate information to your tibble
-  - [tidybulk](https://github.com/stemangiola/tidybulk) for tidy and
-    modular transcriptomics analyses
+  - [tidySingleCellExperiment](https://stemangiola.github.io/tidySingleCellExperiment/)
+    for tidy manipulation of Seurat objects
+  - [tidyseurat](https://stemangiola.github.io/tidyseurat/) for tidy
+    manipulation of Seurat objects
+  - [tidybulk](https://stemangiola.github.io/tidybulk/) for tidy
+    high-level data analysis and manipulation
+  - [tidySummarizedExperiment](https://stemangiola.github.io/tidySummarizedExperiment/)
+    for heatmaps produced with tidy principles
 
 website:
-[stemangiola.github.io/tidyHeatmap/](https://stemangiola.github.io/tidyHeatmap/)
+[stemangiola.github.io/tidyHeatmap](https://stemangiola.github.io/tidyHeatmap/)
 
 `tidyHeatmap` is a package that introduces tidy principles to the
 creation of information-rich heatmaps. This package uses
@@ -34,14 +40,15 @@ as graphical engine.
 
 ## Functions/utilities available
 
-| Function    | Description                         |
-| ----------- | ----------------------------------- |
-| `heatmap`   | Plot base heatmap                   |
-| `add_tile`  | Add tile annotation to the heatmap  |
-| `add_point` | Add point annotation to the heatmap |
-| `add_bar`   | Add bar annotation to the heatmap   |
-| `add_line`  | Add line annotation to the heatmap  |
-| `save_pdf`  | Save the PDF of the heatmap         |
+| Function       | Description                                |
+| -------------- | ------------------------------------------ |
+| `heatmap`      | Plot base heatmap                          |
+| `add_tile`     | Add tile annotation to the heatmap         |
+| `add_point`    | Add point annotation to the heatmap        |
+| `add_bar`      | Add bar annotation to the heatmap          |
+| `add_line`     | Add line annotation to the heatmap         |
+| `layer_symbol` | Add layer of symbols on top of the heatmap |
+| `save_pdf`     | Save the PDF of the heatmap                |
 
 ## Installation
 
@@ -228,3 +235,25 @@ pasilla_plus %>%
 ```
 
 ![](man/figures/unnamed-chunk-12-1.png)<!-- -->
+
+# Layer symbol
+
+Add a layer on top of the heatmap
+
+``` r
+tidyHeatmap::pasilla %>%
+    
+    # filter
+    filter(symbol %in% head(unique(tidyHeatmap::pasilla$symbol), n = 10)) %>%
+    
+    heatmap(
+            .column = sample,
+            .row = symbol,
+            .value = `count normalised adjusted`
+        ) %>% 
+    layer_symbol(
+        `count normalised adjusted log` > 6 & sample == "untreated3" 
+    )
+```
+
+![](man/figures/unnamed-chunk-13-1.png)<!-- -->
