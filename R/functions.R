@@ -159,16 +159,19 @@ input_heatmap = function(.data,
 	new(
 		"InputHeatmap",
 		data = .data %>% reduce_to_tbl_if_in_class_chain,
-		input = list(
+		# Due to the `.homonyms="last"` parameter, additional arguments passed by the user
+		# via `...` overwrite the defaults given below (See also `?rlang::dots_list`)
+		input = rlang::dots_list(
 			abundance_mat,
 			name = quo_name(.abundance),
 			column_title = quo_name(.horizontal),
 			row_title = quo_name(.vertical),
 			col = colors,
 			row_names_gp = gpar(fontsize = min(12, 320 / dim(abundance_mat)[1])),
-			column_names_gp = gpar(fontsize = min(12, 320 / dim(abundance_mat)[2]))
-		)  %>%
-		c(rlang::dots_list(...)),
+			column_names_gp = gpar(fontsize = min(12, 320 / dim(abundance_mat)[2])),
+			...,
+			.homonyms="last"
+		),
 		arguments = arguments
 	)
 	
@@ -190,11 +193,30 @@ add_grouping = function(my_input_heatmap){
 	.vertical = my_input_heatmap@arguments$.vertical
 	.abundance = my_input_heatmap@arguments$.abundance
 	
-	# Add custom palette to discrete if any
-	my_input_heatmap@palette_discrete = my_input_heatmap@arguments$palette_grouping %>% c(my_input_heatmap@palette_discrete)
+	# Number of groups
+	how_many_groups = my_input_heatmap@data %>% attr("groups") %>% nrow
 	
 	# Number of grouping
 	how_many_grouping = my_input_heatmap@data %>% attr("groups") %>% select(-.rows) %>% ncol
+	
+	# Add custom palette to discrete if any
+	my_input_heatmap@palette_discrete =
+		my_input_heatmap@arguments$palette_grouping %>%
+		when(
+			length(.) < how_many_grouping ~ {
+				# Needed for piping
+				pg = .
+				
+				my_input_heatmap@arguments$palette_grouping %>%
+					c(
+						rep("#ffffff", how_many_groups) %>%
+							list() %>%
+							rep(how_many_grouping-length(pg))
+					)
+			},
+			~ (.)
+		) %>%
+		c(my_input_heatmap@palette_discrete)
 	
 	# Colours annotations
 	palette_annotation = my_input_heatmap@palette_discrete %>% head(how_many_grouping) 

@@ -1,19 +1,3 @@
-## ---- echo=FALSE, include=FALSE-----------------------------------------------
-library(knitr)
-knitr::opts_chunk$set(cache = TRUE, warning = FALSE, message = FALSE, cache.lazy = FALSE)
-
-library(magrittr)
-library(dplyr)
-library(tidyr)
-library(tidyHeatmap)
-library(purrr)
-
-
-## ---- eval=FALSE--------------------------------------------------------------
-#  
-#  devtools::install_github("stemangiola/tidyHeatmap")
-#  
-
 ## ---- eval=FALSE--------------------------------------------------------------
 #  
 #  install.packages("tidyHeatmap")
@@ -25,7 +9,7 @@ library(tidyr)
 library(tidyHeatmap)
 
 ## -----------------------------------------------------------------------------
-mtcars_tidy = 
+mtcars_tidy <- 
 	mtcars %>% 
 	as_tibble(rownames="Car name") %>% 
 	
@@ -33,12 +17,12 @@ mtcars_tidy =
 	mutate_at(vars(-`Car name`, -hp, -vs), scale) %>%
 	
 	# tidyfy
-	gather(Property, Value, -`Car name`, -hp, -vs)
+	pivot_longer(cols = -c(`Car name`, hp, vs), names_to = "Property", values_to = "Value")
 
 mtcars_tidy
 
 ## -----------------------------------------------------------------------------
-mtcars_heatmap = 
+mtcars_heatmap <- 
 	mtcars_tidy %>% 
 		heatmap(`Car name`, Property, Value	) %>%
 		add_tile(hp)
@@ -56,12 +40,49 @@ mtcars_tidy %>%
 
 ## -----------------------------------------------------------------------------
 mtcars_tidy %>% 
+	group_by(vs) %>%
+	heatmap(
+		`Car name`, Property, Value	,
+		palette_grouping = list(c("#66C2A5", "#FC8D62"))
+	) %>%
+	add_tile(hp)
+
+
+## -----------------------------------------------------------------------------
+mtcars_tidy %>% 
+	heatmap(`Car name`, Property, Value	) %>%
+	split_rows(2) %>%
+	split_columns(2)
+
+## -----------------------------------------------------------------------------
+mtcars_tidy %>% 
+	heatmap(
+		`Car name`, Property, Value	,
+		row_km = 2,
+		column_km = 2
+	) 
+
+## -----------------------------------------------------------------------------
+mtcars_tidy %>% 
 	heatmap(
 		`Car name`, 
 		Property, 
 		Value,
 		palette_value = c("red", "white", "blue")
 	)
+
+## -----------------------------------------------------------------------------
+mtcars_tidy %>% 
+	heatmap(
+		`Car name`, 
+		Property, 
+		Value,
+		palette_value = circlize::colorRamp2(
+			seq(-2, 2, length.out = 11), 
+			RColorBrewer::brewer.pal(11, "RdBu")
+		)
+	)
+
 
 ## -----------------------------------------------------------------------------
 mtcars_tidy %>% 
@@ -85,7 +106,7 @@ tidyHeatmap::pasilla %>%
 
 ## -----------------------------------------------------------------------------
 # Create some more data points
-pasilla_plus = 
+pasilla_plus <- 
 	tidyHeatmap::pasilla %>%
 		dplyr::mutate(act = activation) %>% 
 		tidyr::nest(data = -sample) %>%
@@ -105,4 +126,33 @@ pasilla_plus %>%
 	add_tile(act) %>%
 	add_bar(size) %>%
 	add_line(age)
+
+## -----------------------------------------------------------------------------
+tidyHeatmap::pasilla %>%
+	
+	# filter
+	filter(symbol %in% head(unique(tidyHeatmap::pasilla$symbol), n = 10)) %>%
+	
+	heatmap(
+			.column = sample,
+			.row = symbol,
+			.value = `count normalised adjusted`
+		) %>% 
+	layer_point(
+		`count normalised adjusted log` > 6 & sample == "untreated3" 
+	)
+
+## -----------------------------------------------------------------------------
+	mtcars_tidy %>% 
+		heatmap(
+			`Car name`, Property, Value, 
+			rect_gp = grid::gpar(col = "#161616", lwd = 0.5)
+		) 
+
+## -----------------------------------------------------------------------------
+	mtcars_tidy %>% 
+		heatmap(
+			`Car name`, Property, Value, 
+			cluster_rows = FALSE
+		) 
 

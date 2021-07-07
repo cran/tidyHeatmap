@@ -1,7 +1,7 @@
 context('tests')
 
 # For resetting
-# vdiffr::manage_cases()
+# testthat::snapshot_review()
 
 test_that("basic plot",{
 
@@ -457,7 +457,7 @@ test_that("managing palette usage",{
 			.value = `count normalised adjusted`
 		)
 	
-	expect_equal(length(p2@palette_discrete), l1-1 )
+	expect_equal(length(p2@palette_discrete), l1 )
 	
 	p3 = 
 		tidyHeatmap::heatmap(
@@ -467,7 +467,7 @@ test_that("managing palette usage",{
 			.value = `count normalised adjusted`
 		)
 	
-	expect_equal(length(p3@palette_discrete), length(p2@palette_discrete)-1 )
+	expect_equal(length(p3@palette_discrete), length(p2@palette_discrete))
 	
 	p4 =
 		p3 %>%
@@ -528,7 +528,7 @@ test_that("layer symbol",{
 			.column = UBR,
 			.value = `read count normalised log`
 		) %>% 
-		layer_symbol(
+		layer_point(
 			`read count normalised log` > 4 & 
 				UBR %in% c(11405, 11427)
 		)
@@ -536,5 +536,25 @@ test_that("layer symbol",{
 	
 	vdiffr::expect_doppelganger("layer symbol", p)
 	
+	
 })
 
+test_that("split",{
+	
+	library(dplyr)
+	
+	p = 
+		tidyHeatmap::N52 %>%
+		tidyHeatmap::heatmap(
+			.row = symbol_ct,
+			.column = UBR,
+			.value = `read count normalised log`
+		) %>% 
+		split_rows(2) %>%
+		split_columns(2)
+	
+	
+	vdiffr::expect_doppelganger("split", p)
+	
+	
+})
