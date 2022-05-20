@@ -138,13 +138,9 @@ mtcars
 ``` r
 mtcars_heatmap <- 
     mtcars_tidy |> 
-    heatmap(`Car name`, Property, Value ) |>
+    heatmap(`Car name`, Property, Value,    scale = "row"   ) |>
     add_tile(hp)
-```
 
-    ## tidyHeatmap says: (once per session) from release 1.2.3 the grouping labels have white background by default. To add color for one-ay grouping specify palette_grouping = list(c("red", "blue"))
-
-``` r
 mtcars_heatmap
 ```
 
@@ -170,7 +166,7 @@ mtcars_tidy_groupings =
 
 mtcars_tidy_groupings |> 
     group_by(vs, property_group) |>
-    heatmap(`Car name`, Property, Value ) |>
+    heatmap(`Car name`, Property, Value,    scale = "row"   ) |>
     add_tile(hp)
 ```
 
@@ -182,7 +178,8 @@ We can provide colour palettes to groupings
 mtcars_tidy_groupings |> 
     group_by(vs, property_group) |>
     heatmap(
-        `Car name`, Property, Value ,
+        `Car name`, Property, Value ,   
+        scale = "row",
         palette_grouping = list(
             
             # For first grouping (vs)
@@ -201,7 +198,7 @@ We can split based on the cladogram
 
 ``` r
 mtcars_tidy |> 
-    heatmap(`Car name`, Property, Value ) |>
+    heatmap(`Car name`, Property, Value,    scale = "row"   ) |>
     split_rows(2) |>
     split_columns(2)
 ```
@@ -214,7 +211,8 @@ stochastic)
 ``` r
 mtcars_tidy |> 
     heatmap(
-        `Car name`, Property, Value ,
+        `Car name`, Property, Value,    
+        scale = "row",
         row_km = 2,
         column_km = 2
     ) 
@@ -232,7 +230,8 @@ mtcars_tidy |>
     heatmap(
         `Car name`, 
         Property, 
-        Value,
+        Value,  
+        scale = "row",
         palette_value = c("red", "white", "blue")
     )
 ```
@@ -246,7 +245,8 @@ mtcars_tidy |>
     heatmap(
         `Car name`, 
         Property, 
-        Value,
+        Value,  
+        scale = "row",
         palette_value = circlize::colorRamp2(
             seq(-2, 2, length.out = 11), 
             RColorBrewer::brewer.pal(11, "RdBu")
@@ -263,12 +263,31 @@ mtcars_tidy |>
     heatmap(
         `Car name`, 
         Property, 
-        Value,
+        Value,  
+        scale = "row",
         palette_value = circlize::colorRamp2(c(-2, -1, 0, 1, 2), viridis::magma(5))
     )
 ```
 
 ![](man/fragments/figures/unnamed-chunk-15-1.png)<!-- -->
+
+We can use grid::colorRamp2 function for tile annotation too
+
+``` r
+mtcars_tidy |> 
+    heatmap(
+        `Car name`, 
+        Property, 
+        Value,  
+        scale = "row"
+    ) |>
+    add_tile(
+        hp, 
+        palette = circlize::colorRamp2(c(0, 100, 200, 300), viridis::magma(4))
+    )
+```
+
+![](man/fragments/figures/unnamed-chunk-16-1.png)<!-- -->
 
 ## Multiple groupings and annotations
 
@@ -278,13 +297,14 @@ tidyHeatmap::pasilla |>
     heatmap(
         .column = sample,
         .row = symbol,
-        .value = `count normalised adjusted`
+        .value = `count normalised adjusted`,   
+        scale = "row"
     ) |>
     add_tile(condition) |>
     add_tile(activation)
 ```
 
-![](man/fragments/figures/unnamed-chunk-16-1.png)<!-- -->
+![](man/fragments/figures/unnamed-chunk-17-1.png)<!-- -->
 
 Remove legends, adding aesthetics to annotations in a modular fashion,
 using `ComplexHeatmap` arguments
@@ -295,14 +315,15 @@ tidyHeatmap::pasilla |>
     heatmap(
         .column = sample,
         .row = symbol,
-        .value = `count normalised adjusted`,
+        .value = `count normalised adjusted`,   
+        scale = "row",
         show_heatmap_legend = FALSE
     ) |>
     add_tile(condition, show_legend = FALSE) |>
     add_tile(activation, show_legend = FALSE)
 ```
 
-![](man/fragments/figures/unnamed-chunk-17-1.png)<!-- -->
+![](man/fragments/figures/unnamed-chunk-18-1.png)<!-- -->
 
 ## Annotation types
 
@@ -323,7 +344,8 @@ pasilla_plus |>
     heatmap(
         .column = sample,
         .row = symbol,
-        .value = `count normalised adjusted`
+        .value = `count normalised adjusted`,   
+        scale = "row"
     ) |>
     add_tile(condition) |>
     add_point(activation) |>
@@ -332,7 +354,7 @@ pasilla_plus |>
     add_line(age)
 ```
 
-![](man/fragments/figures/unnamed-chunk-18-1.png)<!-- -->
+![](man/fragments/figures/unnamed-chunk-19-1.png)<!-- -->
 
 ## Annotation size
 
@@ -344,7 +366,8 @@ pasilla_plus |>
     heatmap(
         .column = sample,
         .row = symbol,
-        .value = `count normalised adjusted`
+        .value = `count normalised adjusted`,   
+        scale = "row"
     ) |>
     add_tile(condition, size = unit(0.3, "cm"), annotation_name_gp= gpar(fontsize = 8)) |>
     add_point(activation, size = unit(0.3, "cm"),   annotation_name_gp= gpar(fontsize = 8)) |>
@@ -353,7 +376,7 @@ pasilla_plus |>
     add_line(age, size = unit(0.3, "cm"),   annotation_name_gp= gpar(fontsize = 8))
 ```
 
-![](man/fragments/figures/unnamed-chunk-19-1.png)<!-- -->
+![](man/fragments/figures/unnamed-chunk-20-1.png)<!-- -->
 
 # Layer symbol
 
@@ -368,14 +391,25 @@ tidyHeatmap::pasilla |>
     heatmap(
         .column = sample,
         .row = symbol,
-        .value = `count normalised adjusted`
+        .value = `count normalised adjusted`,   
+        scale = "row"
     ) |> 
     layer_point(
         `count normalised adjusted log` > 6 & sample == "untreated3" 
     )
 ```
 
-![](man/fragments/figures/unnamed-chunk-20-1.png)<!-- -->
+![](man/fragments/figures/unnamed-chunk-21-1.png)<!-- -->
+
+# Adding heatmap side-by-side
+
+``` r
+p_heatmap = heatmap(mtcars_tidy, `Car name`, Property, Value, scale = "row") 
+
+p_heatmap + p_heatmap
+```
+
+![](man/fragments/figures/unnamed-chunk-22-1.png)<!-- -->
 
 # ComplexHeatmap further styling
 
@@ -384,43 +418,41 @@ tidyHeatmap::pasilla |>
 ``` r
 mtcars_tidy |> 
     heatmap(
-        `Car name`, Property, Value, 
+        `Car name`, Property, Value,    
+        scale = "row", 
         rect_gp = grid::gpar(col = "#161616", lwd = 0.5)
     ) 
 ```
 
-![](man/fragments/figures/unnamed-chunk-21-1.png)<!-- -->
+![](man/fragments/figures/unnamed-chunk-23-1.png)<!-- -->
 
 ## Drop row clustering
 
 ``` r
 mtcars_tidy |> 
     heatmap(
-        `Car name`, Property, Value, 
+        `Car name`, Property, Value,    
+        scale = "row", 
         cluster_rows = FALSE
     ) 
 ```
 
-![](man/fragments/figures/unnamed-chunk-22-1.png)<!-- -->
+![](man/fragments/figures/unnamed-chunk-24-1.png)<!-- -->
 
 ## Reorder rows elements
 
 ``` r
 library(forcats)
-```
-
-    ## Warning: package 'forcats' was built under R version 4.1.2
-
-``` r
 mtcars_tidy |> 
     mutate(`Car name` = fct_reorder(`Car name`, `Car name`, .desc = TRUE)) %>% 
     heatmap(
-        `Car name`, Property, Value, 
+        `Car name`, Property, Value,    
+        scale = "row", 
         cluster_rows = FALSE
     ) 
 ```
 
-![](man/fragments/figures/unnamed-chunk-23-1.png)<!-- -->
+![](man/fragments/figures/unnamed-chunk-25-1.png)<!-- -->
 
 ## Size of dendrograms
 
@@ -428,13 +460,14 @@ mtcars_tidy |>
 mtcars_tidy |> 
     mutate(`Car name` = fct_reorder(`Car name`, `Car name`, .desc = TRUE)) %>% 
     heatmap(
-        `Car name`, Property, Value, 
+        `Car name`, Property, Value,    
+        scale = "row", 
         column_dend_height = unit(0.2, "cm"), 
         row_dend_width = unit(0.2, "cm")
     ) 
 ```
 
-![](man/fragments/figures/unnamed-chunk-24-1.png)<!-- -->
+![](man/fragments/figures/unnamed-chunk-26-1.png)<!-- -->
 
 ## Size of rows/columns titles and names
 
@@ -442,7 +475,8 @@ mtcars_tidy |>
 mtcars_tidy |> 
     mutate(`Car name` = fct_reorder(`Car name`, `Car name`, .desc = TRUE)) %>% 
     heatmap(
-        `Car name`, Property, Value, 
+        `Car name`, Property, Value,    
+        scale = "row", 
         row_names_gp = gpar(fontsize = 7),
         column_names_gp = gpar(fontsize = 7),
         column_title_gp = gpar(fontsize = 7),
@@ -450,7 +484,22 @@ mtcars_tidy |>
     ) 
 ```
 
-![](man/fragments/figures/unnamed-chunk-25-1.png)<!-- -->
+![](man/fragments/figures/unnamed-chunk-27-1.png)<!-- -->
+
+## External `ComplexHeatmap` functionalities
+
+`ComplexHeatmap` has some graphical functionalities that are not
+included in the standard functional framework
+
+### Chainging side of legends
+
+``` r
+heatmap(mtcars_tidy, `Car name`, Property, Value, scale = "row" ) %>%
+    as_ComplexHeatmap() %>%
+    ComplexHeatmap::draw(heatmap_legend_side = "left"   )
+```
+
+![](man/fragments/figures/unnamed-chunk-28-1.png)<!-- -->
 
 ## Using patchwork to integrate heatmaps
 
@@ -461,7 +510,8 @@ library(patchwork)
 p_heatmap =
     mtcars_tidy |> 
     heatmap(
-        `Car name`, Property, Value, 
+        `Car name`, Property, Value,    
+        scale = "row", 
             show_heatmap_legend = FALSE,
         row_names_gp = gpar(fontsize = 7)
     ) 
@@ -474,4 +524,4 @@ wrap_heatmap(p_heatmap) +
     plot_layout(width = c(1, 0.3, 1))
 ```
 
-![](man/fragments/figures/unnamed-chunk-26-1.png)<!-- -->
+![](man/fragments/figures/unnamed-chunk-29-1.png)<!-- -->

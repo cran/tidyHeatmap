@@ -1,16 +1,18 @@
 context('tests')
 
 # For resetting
-# testthat::snapshot_review()
+# testthat::snapshot_review('tests/')
 
 test_that("basic plot",{
 
+ 
 	p = 
 		tidyHeatmap::heatmap(
 			dplyr::filter(tidyHeatmap::N52, Category == "Angiogenesis"),
 			.column = UBR, 
 			.row = symbol_ct, 
-			.value = `read count normalised log`
+			.value = `read count normalised log`,
+			scale = "row"
 		)
 	
 	vdiffr::expect_doppelganger("base", p)
@@ -28,7 +30,8 @@ test_that("grouped plot",{
 				),
 			.column = UBR, 
 			.row = symbol_ct, 
-			.value = `read count normalised log`
+			.value = `read count normalised log`,
+			scale = "row"
 		)
 	
 	
@@ -43,7 +46,8 @@ test_that("annotated plot numerical continuous intereg nominal annot",{
 				dplyr::filter(tidyHeatmap::N52, Category == "Angiogenesis"),
 			.column = UBR, 
 			.row = symbol_ct, 
-			.value = `read count normalised log`
+			.value = `read count normalised log`,
+			scale = "row"
 		) |>
 		add_tile(CAPRA_TOTAL)
 	
@@ -59,7 +63,8 @@ test_that("annotated plot continuous annot MUST ERROR",{
 			 left_join(my_df,  dplyr::mutate(dplyr::distinct(my_df, sample), a = rnorm(n()))), 
 			.column = UBR, 
 			.row = symbol_ct, 
-			.value = `read count normalised log`
+			.value = `read count normalised log`,
+			scale = "row"
 		) |> 
 			add_tile(a), "Your annotation*", fixed=FALSE) 
 	
@@ -76,7 +81,8 @@ test_that("annotated plot continuous annot as well",{
 			left_join(my_df,  dplyr::mutate(dplyr::distinct(my_df, UBR), a = my_UBR)), 
 			.column = UBR, 
 			.row = symbol_ct, 
-			.value = `read count normalised log`
+			.value = `read count normalised log`,
+			scale = "row"
 		) |>
 		add_tile(a) |>
 		add_tile(CAPRA_TOTAL)
@@ -95,7 +101,8 @@ test_that("grouped and annotated plot",{
 			),
 			.column = UBR, 
 			.row = symbol_ct, 
-			.value = `read count normalised log`
+			.value = `read count normalised log`,
+			scale = "row"
 		) |>
 		add_tile(CAPRA_TOTAL)
 	
@@ -111,7 +118,8 @@ test_that("grouped double and annotated plot",{
 			dplyr::group_by(tidyHeatmap::pasilla,		location, type),
 			.column = sample,
 			.row = symbol,
-			.value = `count normalised adjusted`
+			.value = `count normalised adjusted`,
+			scale = "row"
 		) |>
 		add_tile(condition) |>
 		add_tile(activation)
@@ -130,7 +138,8 @@ test_that("grouping error",{
 			dplyr::group_by(tidyHeatmap::pasilla,		location, type, condition),
 			.column = sample,
 			.row = symbol,
-			.value = `count normalised adjusted`
+			.value = `count normalised adjusted`,
+			scale = "row"
 		) |>
 			add_tile(condition) |>
 			add_tile(activation),
@@ -147,7 +156,8 @@ test_that("pasilla one annotation",{
 			tidyHeatmap::pasilla,
 			.column = sample,
 			.row = symbol,
-			.value = `count normalised adjusted log`
+			.value = `count normalised adjusted log`,
+			scale = "row"
 		)  |>
 		add_tile(condition)
 	
@@ -163,7 +173,8 @@ test_that("pasilla 2 annotations",{
 			tidyHeatmap::pasilla,
 			.column = sample,
 			.row = symbol,
-			.value = `count normalised adjusted log`
+			.value = `count normalised adjusted log`,
+			scale = "row"
 		) |>
 		add_tile(condition) |>
 		add_tile(type)
@@ -182,7 +193,8 @@ test_that("pasilla custom color abundance",{
 			.column = sample,
 			.row = symbol,
 			.value = `count normalised adjusted log`,
-			palette_value = c("#d80000", "#ffffff", "#283cea")
+			palette_value = c("#d80000", "#ffffff", "#283cea"),
+			scale = "row"
 		) |>
 		add_tile(condition) |>
 		add_tile(type)
@@ -201,7 +213,8 @@ test_that("pasilla custom color discrete",{
 			tidyHeatmap::pasilla,
 			.column = sample,
 			.row = symbol,
-			.value = `count normalised adjusted log`
+			.value = `count normalised adjusted log`,
+			scale = "row"
 		)  |>
 		add_tile(condition, c("#d80000", "#283cea")) |>
 		add_tile(type)
@@ -219,7 +232,8 @@ test_that("pasilla custom color contunuous",{
 			tidyHeatmap::pasilla,
 			.column = sample,
 			.row = symbol,
-			.value = `count normalised adjusted log`
+			.value = `count normalised adjusted log`,
+			scale = "row"
 		) |>
 		add_tile(activation, c("#d80000", "#283cea"))
 	
@@ -236,7 +250,8 @@ test_that("pasilla custom color contunuous AND discrete",{
 			tidyHeatmap::pasilla,
 			.column = sample,
 			.row = symbol,
-			.value = `count normalised adjusted log`
+			.value = `count normalised adjusted log`,
+			scale = "row"
 		) |>
 		add_tile(condition) |>
 		add_tile(type) |>
@@ -255,7 +270,8 @@ test_that("grouped and annotated plot both vertical and horizontal",{
 			dplyr::group_by(tidyHeatmap::pasilla,		location),
 			.column = sample,
 			.row = symbol,
-			.value = `count normalised adjusted`
+			.value = `count normalised adjusted`,
+			scale = "row"
 		) |>
 		add_tile(condition) |>
 		add_tile(type) |>
@@ -274,6 +290,7 @@ test_that("pass arguments with ...",{
 			.column = sample,
 			.row = symbol,
 			.value = `count normalised adjusted`,
+			scale = "row",
 			show_heatmap_legend = FALSE
 		) |>
 		add_tile(condition) |>
@@ -294,6 +311,7 @@ test_that("Custom function for fill abundance palette",{
 			.column = UBR, 
 			.row = symbol_ct, 
 			.value = `read count normalised log`,
+			scale = "row",
 			palette_value = circlize::colorRamp2(c(-2, -1, 0, 1, 2), viridis::magma(5))
 		)
 	
@@ -309,7 +327,8 @@ test_that("Warning if data sparse",{
 			dplyr::slice(dplyr::filter(tidyHeatmap::N52, Category == "Angiogenesis"), -1),
 			.column = UBR, 
 			.row = symbol_ct, 
-			.value = `read count normalised log`, 
+			.value = `read count normalised log`,
+			scale = "row", 
 			palette_value = circlize::colorRamp2(c(-2, -1, 0, 1, 2), viridis::magma(5))
 		)
 	
@@ -326,7 +345,8 @@ test_that("test log of 0",{
 			dplyr::filter(tidyHeatmap::N52, Category == "Angiogenesis"),
 			.column = UBR, 
 			.row = symbol_ct, 
-			.value = `read count`, 
+			.value = `read count`,
+			scale = "row", 
 			transform = log	
 		),
 		"you applied a transformation that introduced negative infinite .value"
@@ -337,7 +357,8 @@ test_that("test log of 0",{
 			dplyr::filter(tidyHeatmap::N52, Category == "Angiogenesis"),
 			.column = UBR, 
 			.row = symbol_ct, 
-			.value = `read count`, 
+			.value = `read count`,
+			scale = "row", 
 			transform = log1p	
 		)
 	
@@ -351,8 +372,8 @@ test_that("test scale",{
 				dplyr::filter(tidyHeatmap::N52, Category == "Angiogenesis"),
 				.column = UBR, 
 				.row = symbol_ct, 
-				.value = `read count`, 
-				.scale = "row"
+				.value = `read count`,
+				scale = "row"
 			)
 	vdiffr::expect_doppelganger("scale row", p)
 	
@@ -361,7 +382,7 @@ test_that("test scale",{
 				.column = UBR, 
 				.row = symbol_ct, 
 				.value = `read count`, 
-				.scale = "column"
+				scale = "column"
 			)
 	vdiffr::expect_doppelganger("scale column", p)
 	
@@ -370,7 +391,7 @@ p=tidyHeatmap::heatmap(
 				.column = UBR, 
 				.row = symbol_ct, 
 				.value = `read count`, 
-				.scale = "both"
+				scale = "both"
 			)
 vdiffr::expect_doppelganger("scale both", p)
 
@@ -379,7 +400,7 @@ vdiffr::expect_doppelganger("scale both", p)
 				.column = UBR, 
 				.row = symbol_ct, 
 				.value = `read count`, 
-				.scale = "none"
+				scale = "none"
 			)
 	vdiffr::expect_doppelganger("scale none", p)
 	
@@ -388,8 +409,8 @@ vdiffr::expect_doppelganger("scale both", p)
 				.column = UBR, 
 				.row = symbol_ct, 
 				.value = `read count`, 
-				.scale = "WRONG_INPUT"
-			), "the .scale parameter has to be one")
+				scale = "WRONG_INPUT"
+			), "the scale parameter has to be one")
 })
 
 test_that("multi-type",{
@@ -429,7 +450,8 @@ test_that("save_pdf",{
 		dplyr::filter(tidyHeatmap::N52, Category == "Angiogenesis"),
 		.column = UBR, 
 		.row = symbol_ct, 
-		.value = `read count normalised log`
+		.value = `read count normalised log`,
+		scale = "row"
 	) |>
 	save_pdf(filename)
 	
@@ -443,7 +465,8 @@ test_that("managing palette usage",{
 			tidyHeatmap::pasilla,
 			.column = sample,
 			.row = symbol,
-			.value = `count normalised adjusted`
+			.value = `count normalised adjusted`,
+			scale = "row"
 		)
 	
 	l1 = length(p1@palette_discrete)
@@ -454,7 +477,8 @@ test_that("managing palette usage",{
 			dplyr::group_by(tidyHeatmap::pasilla, type),
 			.column = sample,
 			.row = symbol,
-			.value = `count normalised adjusted`
+			.value = `count normalised adjusted`,
+			scale = "row"
 		)
 	
 	expect_equal(length(p2@palette_discrete), l1 )
@@ -464,7 +488,8 @@ test_that("managing palette usage",{
 			dplyr::group_by(tidyHeatmap::pasilla,		location, type),
 			.column = sample,
 			.row = symbol,
-			.value = `count normalised adjusted`
+			.value = `count normalised adjusted`,
+			scale = "row"
 		)
 	
 	expect_equal(length(p3@palette_discrete), length(p2@palette_discrete))
@@ -486,21 +511,6 @@ test_that("managing palette usage",{
 	
 })
 
-test_that("annotated plot numerical continuous intereg nominal annot",{
-	
-	expect_warning(
-		tidyHeatmap::heatmap(
-			dplyr::filter(tidyHeatmap::N52, Category == "Angiogenesis"),
-			.column = UBR, 
-			.row = symbol_ct, 
-			.value = `read count normalised log`,
-			annotation = CAPRA_TOTAL
-		), "Please use the new annotation framework instead"
-	)
-	
-
-})
-
 test_that("test sparse matrix",{
 	
 	p=data.frame(G = c('G1', 'G2', 'G3'), Y = c('M1', 'M1', 'M2'), V = c(1,2,3)) |>
@@ -508,7 +518,8 @@ test_that("test sparse matrix",{
 			tidyHeatmap::heatmap(
 				G, Y, V,
 				cluster_rows = FALSE,
-				cluster_columns = FALSE
+				cluster_columns = FALSE,
+				scale = "row"
 			)
 	
 	vdiffr::expect_doppelganger("sparse matrix", p)
@@ -526,7 +537,8 @@ test_that("layer symbol",{
 		tidyHeatmap::heatmap(
 			.row = symbol_ct,
 			.column = UBR,
-			.value = `read count normalised log`
+			.value = `read count normalised log`,
+			scale = "row"
 		) |> 
 		layer_point(
 			`read count normalised log` > 4 & 
@@ -546,7 +558,8 @@ test_that("split",{
 		tidyHeatmap::heatmap(
 			.row = symbol_ct,
 			.column = UBR,
-			.value = `read count normalised log`
+			.value = `read count normalised log`,
+			scale = "row"
 		) |> 
 		split_rows(2) |>
 		split_columns(2)
@@ -565,6 +578,7 @@ test_that("legend",{
 			.row = symbol_ct,
 			.column = UBR,
 			.value = `read count normalised log`,
+			scale = "row",
 			show_heatmap_legend = FALSE
 		) |> 
 		add_tile(UBR, show_legend = FALSE) |>
@@ -583,6 +597,7 @@ test_that("size annotation",{
 			.row = symbol_ct,
 			.column = UBR,
 			.value = `read count normalised log`,
+			scale = "row",
 			show_heatmap_legend = FALSE
 		) |> 
 		add_tile(UBR, size = unit(20, "mm")) |>
@@ -602,7 +617,8 @@ test_that("wrap heatmap for patchwork",{
 		tidyHeatmap::heatmap(
 			.row = symbol_ct,
 			.column = UBR,
-			.value = `read count normalised log`
+			.value = `read count normalised log`,
+			scale = "row"
 		) %>% 
 		wrap_heatmap()
 	
@@ -610,3 +626,42 @@ test_that("wrap heatmap for patchwork",{
 	
 	
 })
+
+test_that("plus operator",{
+	
+	p = 
+		tidyHeatmap::heatmap(
+			dplyr::filter(tidyHeatmap::N52, Category == "Angiogenesis"),
+			.column = UBR, 
+			.row = symbol_ct, 
+			.value = `read count normalised log`,
+			scale = "row"
+		)
+	
+	p = p+p
+	
+	
+	vdiffr::expect_doppelganger("plus operator", p)
+	
+})
+
+test_that("tile colorRamp2 palette",{
+	
+	p = 
+		tidyHeatmap::heatmap(
+			dplyr::filter(tidyHeatmap::N52, Category == "Angiogenesis"),
+			.column = UBR, 
+			.row = symbol_ct, 
+			.value = `read count normalised log`,
+			scale = "row"
+		) %>%
+		add_tile(
+			inflection,
+			palette = colorRamp2(c(0, 3,10), c("white", "green", "red"))
+		)
+	
+	
+	vdiffr::expect_doppelganger("tile colorRamp2 palette", p)
+	
+})
+
