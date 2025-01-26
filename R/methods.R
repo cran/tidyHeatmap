@@ -1,3 +1,6 @@
+# Specify undefined global variables for R CMD check
+utils::globalVariables(c("shape", "size", "text", ":="))
+
 #the class definition
 InputHeatmap<-setClass(
 	"InputHeatmap",  
@@ -11,7 +14,8 @@ InputHeatmap<-setClass(
 		top_annotation = "tbl",
 		left_annotation = "tbl",
 		arguments = "list" ,
-		layer_symbol = "tbl"
+		layer_symbol = "tbl",
+		layer_text = "tbl"
 	),
 	prototype=list(
 		palette_discrete=
@@ -25,7 +29,7 @@ InputHeatmap<-setClass(
 			), 
 		palette_continuous=
 			list(
-				brewer.pal(11, "Spectral") %>% rev,
+				brewer.pal(11, "Spectral") |> rev(),
 				viridis(n = 5),
 				magma(n = 5),
 				brewer.pal(11, "PRGn"),
@@ -36,7 +40,9 @@ InputHeatmap<-setClass(
 		left_annotation = tibble(col_name = character(), orientation = character(), col_orientation = character(), data = list(),      fx = list(),    annot = list(),     annot_type= character(),   idx = integer(), color = list(), further_arguments = list()),
 		group_top_annotation = list(),
 		group_left_annotation = list(),
-		layer_symbol = tibble(column = integer(), row = integer(), shape = integer())
+		layer_symbol = tibble(column = integer(), row = integer(), shape = integer()),
+		layer_text = tibble(column = integer(), row = integer(), text = character(), size = numeric())
+		
 	)
 )
 
@@ -49,7 +55,7 @@ InputHeatmap<-setClass(
 #'
 #' @importFrom methods show
 #' @importFrom tibble rowid_to_column
-#' @importFrom grid grid.points
+#' @importFrom grid grid.points grid.text
 #' 
 #'
 #' @name as_ComplexHeatmap
@@ -75,7 +81,10 @@ InputHeatmap<-setClass(
 #' @rdname as_ComplexHeatmap-method
 #'
 #' @export
-#' 
+#' @references Mangiola, S. and Papenfuss, A.T., 2020. "tidyHeatmap: an R package for 
+#'   modular heatmap production based on tidy principles." Journal of Open Source Software.
+#'   doi:10.21105/joss.02472.
+#' @source [Mangiola and Papenfuss., 2020](https://joss.theoj.org/papers/10.21105/joss.02472)
 setGeneric("as_ComplexHeatmap", function(tidyHeatmap) standardGeneric("as_ComplexHeatmap"))
 
 
@@ -83,12 +92,16 @@ setGeneric("as_ComplexHeatmap", function(tidyHeatmap) standardGeneric("as_Comple
 #'
 #' @importFrom ComplexHeatmap columnAnnotation
 #' @importFrom ComplexHeatmap rowAnnotation
+#' @importFrom ComplexHeatmap HeatmapAnnotation
 #'
 #' @docType methods
 #' @rdname as_ComplexHeatmap-method
 #'
 #' @export
-#' 
+#' @references Mangiola, S. and Papenfuss, A.T., 2020. "tidyHeatmap: an R package for 
+#'   modular heatmap production based on tidy principles." Journal of Open Source Software.
+#'   doi:10.21105/joss.02472.
+#' @source [Mangiola and Papenfuss., 2020](https://joss.theoj.org/papers/10.21105/joss.02472)
 setMethod("as_ComplexHeatmap", "InputHeatmap", function(tidyHeatmap){
 	
 	# Fix CRAN notes
@@ -96,49 +109,83 @@ setMethod("as_ComplexHeatmap", "InputHeatmap", function(tidyHeatmap){
 	index_column_wise = NULL
 	shape = NULL
 	
-	tidyHeatmap@input$top_annotation = 
-		c(
-			tidyHeatmap@group_top_annotation,
-			tidyHeatmap@top_annotation %>% annot_to_list()
-		) %>%
-		list_drop_null() %>%
-		when(
-			
-			# is.null needed for check Windows CRAN servers
-			(.) %>% length %>% gt(0) && !is.null(.) ~ do.call("columnAnnotation", . ),
-			~ NULL
-		)
+	top_annotations <- c(
+	  tidyHeatmap@group_top_annotation,
+	  tidyHeatmap@top_annotation |> annot_to_list()
+	) |>
+	  list_drop_null() |> 
+	  filter_args(
+	    HeatmapAnnotation, 
+	    force_keep = 	    
+	      seq_len(nrow(tidyHeatmap@top_annotation) + length(tidyHeatmap@group_top_annotation))
+
+	   ) # force keep because columnAnnotation, which calls HeatmapAnnotation has ellipse as first argument. Pretty peculiar setup |>
 	
-	tidyHeatmap@input$left_annotation = 
-		c(
-			tidyHeatmap@group_left_annotation,
-			tidyHeatmap@left_annotation %>% annot_to_list()
-		) %>%
-		list_drop_null()  %>%
-		when(
-			
-			# is.null needed for check Windows CRAN servers
-			(.) %>% length %>% gt(0) && !is.null(.)	~ do.call("rowAnnotation", . ),
-			~ NULL
-		)
+	
+	tidyHeatmap@input$top_annotation <- 
+	  if (length(top_annotations) > 0 && !is.null(top_annotations)) {
+	    do.call("columnAnnotation", top_annotations)
+	  } else {
+	    NULL
+	  }
+	
+	left_annotations <- c(
+	  tidyHeatmap@group_left_annotation,
+	  tidyHeatmap@left_annotation |> annot_to_list()
+	) |>
+	  list_drop_null() |> 
+	  filter_args(
+	    HeatmapAnnotation, 
+	    force_keep = 
+	      seq_len(nrow(tidyHeatmap@left_annotation) + length(tidyHeatmap@group_left_annotation))
+	   ) # force keep because columnAnnotation, which calls HeatmapAnnotation has ellipse as first argument. Pretty peculiar setup
+	
+	tidyHeatmap@input$left_annotation <- 
+	  if (length(left_annotations) > 0 && !is.null(left_annotations)) {
+	    do.call("rowAnnotation", left_annotations)
+	  } else {
+	    NULL
+	  }
 	
 	# On-top layer
 	tidyHeatmap@input$layer_fun = function(j, i, x, y, w, h, fill) {
+		
+		# Add symbol
 		ind = 
-			tibble(row = i, column = j) %>%
-			rowid_to_column("index_column_wise") %>%
+			tibble(row = i, column = j) |>
+			rowid_to_column("index_column_wise") |>
 			
 			# Filter just points to label
-			inner_join(tidyHeatmap@layer_symbol, by = c("row", "column")) %>%
-			select(`index_column_wise`, `shape`)
+			inner_join(tidyHeatmap@layer_symbol, by = c("row", "column"))
 		
-		if(nrow(ind)>0)
+		# Return graphical elements
+		if(nrow(ind)>0){
 			grid.points(
 				x[ind$index_column_wise], y[ind$index_column_wise], 
 				pch = ind$shape , 
-				size = unit(3, "mm"), 
+				size = unit(ind$size, "mm"), 
 				gp = gpar(col = NULL, fill="#161616")
 			)
+		}
+		
+		# Add text
+		ind_text =
+			tibble(row = i, column = j) |>
+			rowid_to_column("index_column_wise") |>
+			
+			# Filter just points to label
+			inner_join(tidyHeatmap@layer_text, by = c("row", "column")) 
+		
+		# Return graphical elements
+		if(nrow(ind_text) > 0){
+			grid.text(
+				ind_text$text,
+				x[ind_text$index_column_wise],
+				y[ind_text$index_column_wise],
+				gp = gpar(fontsize = ind_text$size, col = "#000000")
+			)
+		}
+		
 	}
 	
 	return(do.call(Heatmap, tidyHeatmap@input))
@@ -146,16 +193,25 @@ setMethod("as_ComplexHeatmap", "InputHeatmap", function(tidyHeatmap){
 
 setMethod("show", "InputHeatmap", function(object){
 	
-	object %>%
-		as_ComplexHeatmap() %>%
+	object |>
+		as_ComplexHeatmap() |>
 		show()
 })
 
+
 #' @rdname plot_arithmetic
+#' 
+#' @importFrom ComplexHeatmap add_heatmap
+#' 
 #' @export
+#' @references Mangiola, S. and Papenfuss, A.T., 2020. "tidyHeatmap: an R package for 
+#'   modular heatmap production based on tidy principles." Journal of Open Source Software.
+#'   doi:10.21105/joss.02472.
+#' @source [Mangiola and Papenfuss., 2020](https://joss.theoj.org/papers/10.21105/joss.02472)
 "+.InputHeatmap" <- function(e1, e2) {
 	
-	as_ComplexHeatmap(e1) + as_ComplexHeatmap(e2)
+  add_heatmap(as_ComplexHeatmap(e1), as_ComplexHeatmap(e2)) 
+
 }
 
 #' Creates a  `InputHeatmap` object from `tbl_df` on evaluation creates a `ComplexHeatmap`
@@ -166,7 +222,6 @@ setMethod("show", "InputHeatmap", function(object){
 #'
 #' @importFrom ComplexHeatmap Heatmap
 #' @importFrom rlang enquo
-#' @importFrom magrittr "%>%"
 #' @importFrom stats sd
 #' @importFrom lifecycle is_present
 #' @importFrom lifecycle deprecate_warn
@@ -174,7 +229,7 @@ setMethod("show", "InputHeatmap", function(object){
 #'
 #' @name heatmap
 #'
-#' @param .data A `tbl_df` formatted as | <ELEMENT> | <FEATURE> | <VALUE> | <...> |
+#' @param .data A `tbl_df` formatted as | <.row> | <.column> | <.value> | <...> |
 #' @param .row The name of the column vertically presented in the heatmap
 #' @param .column The name of the column horizontally presented in the heatmap
 #' @param .value The name of the column for the value of the element/feature pair
@@ -194,20 +249,23 @@ setMethod("show", "InputHeatmap", function(object){
 #'
 #' @examples
 #'
-#' library(dplyr)
 #' 
-#' tidyHeatmap::N52 %>%
-#' group_by( `Cell type`) %>%
-#' tidyHeatmap::heatmap(
-#'  .row = symbol_ct,
-#'  .column = UBR,
-#'  .value = `read count normalised log`,
-#' )
+#' tidyHeatmap::N52 |>
+#'   dplyr::group_by( `Cell type`) |>
+#'   tidyHeatmap::heatmap(
+#'    .row = symbol_ct,
+#'    .column = UBR,
+#'    .value = `read count normalised log`,
+#'   )
 #'
 #' @docType methods
 #' @rdname heatmap-method
 #'
 #' @export
+#' @references Mangiola, S. and Papenfuss, A.T., 2020. "tidyHeatmap: an R package for 
+#'   modular heatmap production based on tidy principles." Journal of Open Source Software.
+#'   doi:10.21105/joss.02472.
+#' @source [Mangiola and Papenfuss., 2020](https://joss.theoj.org/papers/10.21105/joss.02472)
 setGeneric("heatmap", function(.data,
 															 .row, 
 															 .column,
@@ -250,14 +308,14 @@ heatmap_ <-
 		if(!(is.null(transform) || is_function(transform))) stop("tidyHeatmap says: transform has to be a function. is_function(transform) == TRUE")
 		
 		# Check if scale is of correct type
-		if(scale %in% c("none", "row", "column", "both") %>% `!`) stop("tidyHeatmap says: the scale parameter has to be one of c(\"none\", \"row\", \"column\", \"both\")")
-
+		if(scale %in% c("none", "row", "column", "both") |> not()) stop("tidyHeatmap says: the scale parameter has to be one of c(\"none\", \"row\", \"column\", \"both\")")
+		
 		# # Message about change of style, once per session
 		# if(length(palette_grouping)==0 & getOption("tidyHeatmap_white_group_message",TRUE)) {
 		# 	message("tidyHeatmap says: (once per session) from release 1.2.3 the grouping labels have white background by default. To add color for one-ay grouping specify palette_grouping = list(c(\"red\", \"blue\"))")
 		# 	options("tidyHeatmap_white_group_message"=FALSE) 
 		# }
-
+		
 		# Message about change of scale, once per session
 		if(scale == "none" & getOption("tidyHeatmap_default_scaling_none",TRUE)) {
 			message("tidyHeatmap says: (once per session) from release 1.7.0 the scaling is set to \"none\" by default. Please use scale = \"row\", \"column\" or \"both\" to apply scaling")
@@ -267,9 +325,9 @@ heatmap_ <-
 		.row = enquo(.row)
 		.column = enquo(.column)
 		.value <- enquo(.value)
-
+		
 		# Validation
-		.data %>% validation(!!.column, !!.row, !!.value)
+		.data |> validation(!!.column, !!.row, !!.value)
 		
 		# DEPRECATION OF SCALE
 		if (is_present(.scale) && !is.null(.scale)) {
@@ -278,16 +336,16 @@ heatmap_ <-
 			deprecate_warn("1.7.0", "tidyHeatmap::heatmap(.scale = )", details = "Please use scale (without dot prefix) instead: heatmap(scale = ...)")
 			
 			scale = .scale
-
+			
 		}
 		
-		.data %>% 
+		.data |> 
 			
 			# # Check if data is rectangular
 			# ifelse_pipe(
 			# 	!check_if_data_rectangular((.), !!.column, !!.row, !!.value),
 			# 	~  eliminate_sparse_transcripts(.x, !!.row)
-			# ) %>%
+			# ) |>
 			
 			# Run plotting function
 			input_heatmap(
@@ -299,10 +357,10 @@ heatmap_ <-
 				palette_value = palette_value,
 				palette_grouping = palette_grouping,
 				...
-			)		%>%
+			)		|>
 			
 			# Add group annotation if any
-			when( "groups" %in%  (attributes(.data) %>% names) ~ 	add_grouping(.), ~ (.))
+			when( "groups" %in%  (attributes(.data) |> names()) ~ 	add_grouping(.), ~ (.))
 		
 	}
 
@@ -338,20 +396,22 @@ setMethod("heatmap", "tbl_df", heatmap_)
 #'
 #' \lifecycle{maturing}
 #'
-#' @description add_tile() from a `InputHeatmap` object, adds a tile annotation layer.
+#' @description annotation_tile() from a `InputHeatmap` object, adds a tile annotation layer.
 #'
 #' @importFrom rlang enquo
-#' @importFrom magrittr "%>%"
 #' @importFrom grid unit 
 #'
-#' @name add_tile
-#' @rdname add_tile-method
+#' @name annotation_tile
+#' @rdname annotation_tile-method
 #'
-#' @param .data A `tbl_df` formatted as | <ELEMENT> | <FEATURE> | <VALUE> | <...> |
+#' @param .data a `InputHeatmap` object created calling `tidyHeatmap::heatmap()`
 #' @param .column Vector of quotes
 #' @param palette A character vector of colors, or a function such as colorRamp2 (see examples).
 #' @param size A grid::unit object, e.g. unit(2, "cm"). This is the height or width of the annotation depending on the orientation.
-#' @param ... The arguments that will be passed to top_annotation or left_annotation of the ComplexHeatmap container
+#' @param ... The arguments that will be passed to 
+#'   \code{\link[ComplexHeatmap:anno_block]{anno_block}} and 
+#'   \code{\link[ComplexHeatmap:HeatmapAnnotation]{HeatmapAnnotation}}
+#'   if you want to fine tune the aesthetics.
 #'
 #' @details It uses `ComplexHeatmap` as visualisation tool.
 #' 
@@ -361,58 +421,65 @@ setMethod("heatmap", "tbl_df", heatmap_)
 #'
 #' @examples
 #'
-#' library(dplyr)
 #' 
 #' hm = 
-#'   tidyHeatmap::N52 %>%
+#'   tidyHeatmap::N52 |>
 #'   tidyHeatmap::heatmap(
 #'     .row = symbol_ct,
 #'     .column = UBR,
 #'     .value = `read count normalised log`
 #' )
 #' 
-#' hm %>% add_tile(CAPRA_TOTAL)
+#' hm |> annotation_tile(CAPRA_TOTAL)
 #'
 #'
-#' hm %>% add_tile(inflection, palette = circlize::colorRamp2(c(0, 3,10), c("white", "green", "red")))
+#' hm |> 
+#'   annotation_tile(
+#'     inflection, 
+#'     palette = circlize::colorRamp2(c(0, 3,10), c("white", "green", "red"))
+#'  )
 #'
 #' @export
-setGeneric("add_tile", function(.data,
-																.column,
-																palette = NULL, size = NULL, ...)
-	standardGeneric("add_tile"))
+#' @references Mangiola, S. and Papenfuss, A.T., 2020. "tidyHeatmap: an R package for 
+#'   modular heatmap production based on tidy principles." Journal of Open Source Software.
+#'   doi:10.21105/joss.02472.
+#' @source [Mangiola and Papenfuss., 2020](https://joss.theoj.org/papers/10.21105/joss.02472)
+setGeneric("annotation_tile", function(.data,
+																			 .column,
+																			 palette = NULL, size = NULL, ...)
+	standardGeneric("annotation_tile"))
 
-#' add_tile
+#' annotation_tile
 #' 
 #' @docType methods
-#' @rdname add_tile-method
+#' @rdname annotation_tile-method
 #' 
 #' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
 #'
-setMethod("add_tile", "InputHeatmap", function(.data,
-																							 .column,
-																							 palette = NULL, size = NULL,...){
+setMethod("annotation_tile", "InputHeatmap", function(.data,
+																											.column,
+																											palette = NULL, size = NULL,...){
 	
 	.column = enquo(.column)
 	
-	.data %>% add_annotation(
+	.data |> add_annotation(
 		!!.column,
 		type = "tile",
 		
 		# If annotation is discrete
 		palette_discrete = 
-			.data@data %>% 
-			ungroup() %>%
-			select(!!.column) %>% 
-			sapply(class) %>% 
+			.data@data |> 
+			ungroup() |>
+			select(!!.column) |> 
+			sapply(class) |> 
 			when(. %in% c("factor", "character", "logical") &	!is.null(palette) ~ list(palette), ~ list()),
 		
 		# If annotation is continuous
 		palette_continuous = 
-			.data@data %>% 
-			ungroup() %>%
-			select(!!.column) %>% 
-			sapply(class) %>% 
+			.data@data |> 
+			ungroup() |>
+			select(!!.column) |> 
+			sapply(class) |> 
 			when(. %in% c("integer", "numerical", "numeric", "double") &	!is.null(palette) ~ list(palette), ~ list()),
 		
 		size = size,
@@ -425,22 +492,24 @@ setMethod("add_tile", "InputHeatmap", function(.data,
 #'
 #' \lifecycle{maturing}
 #'
-#' @description add_point() from a `InputHeatmap` object, adds a point annotation layer.
+#' @description annotation_point() from a `InputHeatmap` object, adds a point annotation layer.
 #'
 #' @importFrom rlang enquo
-#' @importFrom magrittr "%>%"
 #' @importFrom grid unit 
 #' 
 #'
-#' @name add_point
-#' @rdname add_point-method
+#' @name annotation_point
+#' @rdname annotation_point-method
 #'
-#' @param .data A `tbl_df` formatted as | <ELEMENT> | <FEATURE> | <VALUE> | <...> |
+#' @param .data a `InputHeatmap` object created calling `tidyHeatmap::heatmap()`
 #' @param .column Vector of quotes
 #' @param palette A character vector of colors, or a function such as colorRamp2 (see examples).
 #' @param size A grid::unit object, e.g. unit(2, "cm"). This is the height or width of the annotation depending on the orientation.
-#' @param ... The arguments that will be passed to top_annotation or left_annotation of the ComplexHeatmap container
-#'
+#' @param ... The arguments that will be passed to 
+#'   \code{\link[ComplexHeatmap:anno_points]{anno_points}} and 
+#'   \code{\link[ComplexHeatmap:HeatmapAnnotation]{HeatmapAnnotation}}
+#'   if you want to fine tune the aesthetics.
+#'   
 #' @details It uses `ComplexHeatmap` as visualisation tool.
 #' 
 #' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
@@ -449,39 +518,42 @@ setMethod("add_tile", "InputHeatmap", function(.data,
 #'
 #' @examples
 #'
-#' library(dplyr)
 #' 
 #' hm = 
-#'   tidyHeatmap::N52 %>%
+#'   tidyHeatmap::N52 |>
 #'   tidyHeatmap::heatmap(
 #'     .row = symbol_ct,
 #'     .column = UBR,
 #'     .value = `read count normalised log`
 #' )
 #' 
-#' hm %>% add_point(inflection)
+#' hm |> annotation_point(inflection)
 #'
 #'
 #' @export
-setGeneric("add_point", function(.data,
-																.column,
-																palette = NULL, size = NULL,...)
-	standardGeneric("add_point"))
+#' @references Mangiola, S. and Papenfuss, A.T., 2020. "tidyHeatmap: an R package for 
+#'   modular heatmap production based on tidy principles." Journal of Open Source Software.
+#'   doi:10.21105/joss.02472.
+#' @source [Mangiola and Papenfuss., 2020](https://joss.theoj.org/papers/10.21105/joss.02472)
+setGeneric("annotation_point", function(.data,
+																				.column,
+																				palette = NULL, size = NULL,...)
+	standardGeneric("annotation_point"))
 
-#' add_point
+#' annotation_point
 #' 
 #' @docType methods
-#' @rdname add_point-method
+#' @rdname annotation_point-method
 #' 
 #' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
 #'
-setMethod("add_point", "InputHeatmap", function(.data,
-																							 .column,
-																							 palette = NULL, size = NULL,...){
+setMethod("annotation_point", "InputHeatmap", function(.data,
+																											 .column,
+																											 palette = NULL, size = NULL,...){
 	
 	.column = enquo(.column)
 	
-	.data %>% add_annotation(	!!.column,	type = "point", 		size = size,...)
+	.data |> add_annotation(	!!.column,	type = "point", 		size = size,...)
 	
 })
 
@@ -489,22 +561,24 @@ setMethod("add_point", "InputHeatmap", function(.data,
 #'
 #' \lifecycle{maturing}
 #'
-#' @description add_line() from a `InputHeatmap` object, adds a line annotation layer.
+#' @description annotation_line() from a `InputHeatmap` object, adds a line annotation layer.
 #'
 #' @importFrom rlang enquo
-#' @importFrom magrittr "%>%"
 #' @importFrom grid unit 
 #' 
 #'
-#' @name add_line
-#' @rdname add_line-method
+#' @name annotation_line
+#' @rdname annotation_line-method
 #'
-#' @param .data A `tbl_df` formatted as | <ELEMENT> | <FEATURE> | <VALUE> | <...> |
+#' @param .data a `InputHeatmap` object created calling `tidyHeatmap::heatmap()`
 #' @param .column Vector of quotes
 #' @param palette A character vector of colors, or a function such as colorRamp2 (see examples).
 #' @param size A grid::unit object, e.g. unit(2, "cm"). This is the height or width of the annotation depending on the orientation.
-#' @param ... The arguments that will be passed to top_annotation or left_annotation of the ComplexHeatmap container
-#'
+#' @param ... The arguments that will be passed to 
+#'   \code{\link[ComplexHeatmap:anno_lines]{anno_lines}} and 
+#'   \code{\link[ComplexHeatmap:HeatmapAnnotation]{HeatmapAnnotation}}
+#'   if you want to fine tune the aesthetics.
+#'   
 #' @details It uses `ComplexHeatmap` as visualisation tool.
 #' 
 #' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
@@ -513,40 +587,43 @@ setMethod("add_point", "InputHeatmap", function(.data,
 #'
 #' @examples
 #'
-#' library(dplyr)
 #' 
 #' hm = 
-#'   tidyHeatmap::N52 %>%
+#'   tidyHeatmap::N52 |>
 #'   tidyHeatmap::heatmap(
 #'     .row = symbol_ct,
 #'     .column = UBR,
 #'     .value = `read count normalised log`
 #' )
 #' 
-#' hm %>% add_line(inflection)
+#' hm |> annotation_line(inflection)
 #'
 #'
 #' @export
-setGeneric("add_line", function(.data,
-																 .column,
-																 palette = NULL,size = NULL, ...)
-	standardGeneric("add_line"))
+#' @references Mangiola, S. and Papenfuss, A.T., 2020. "tidyHeatmap: an R package for 
+#'   modular heatmap production based on tidy principles." Journal of Open Source Software.
+#'   doi:10.21105/joss.02472.
+#' @source [Mangiola and Papenfuss., 2020](https://joss.theoj.org/papers/10.21105/joss.02472)
+setGeneric("annotation_line", function(.data,
+																			 .column,
+																			 palette = NULL,size = NULL, ...)
+	standardGeneric("annotation_line"))
 
-#' add_line
+#' annotation_line
 #' 
 #' @docType methods
-#' @rdname add_line-method
+#' @rdname annotation_line-method
 #' 
 #'
 #' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
 #'
-setMethod("add_line", "InputHeatmap", function(.data,
-																								.column,
-																								palette = NULL, size = NULL,...){
+setMethod("annotation_line", "InputHeatmap", function(.data,
+																											.column,
+																											palette = NULL, size = NULL,...){
 	
 	.column = enquo(.column)
 	
-	.data %>% add_annotation(	!!.column,	type = "line", 		size = size,...)
+	.data |> add_annotation(	!!.column,	type = "line", 		size = size,...)
 	
 })
 
@@ -554,21 +631,23 @@ setMethod("add_line", "InputHeatmap", function(.data,
 #'
 #' \lifecycle{maturing}
 #'
-#' @description add_bar() from a `InputHeatmap` object, adds a bar annotation layer.
+#' @description annotation_bar() from a `InputHeatmap` object, adds a bar annotation layer.
 #'
 #' @importFrom rlang enquo
-#' @importFrom magrittr "%>%"
 #' @importFrom grid unit 
 #' 
 #'
-#' @name add_bar
-#' @rdname add_bar-method
+#' @name annotation_bar
+#' @rdname annotation_bar-method
 #'
-#' @param .data A `tbl_df` formatted as | <ELEMENT> | <FEATURE> | <VALUE> | <...> |
+#' @param .data a `InputHeatmap` object created calling `tidyHeatmap::heatmap()`
 #' @param .column Vector of quotes
 #' @param palette A character vector of colors, or a function such as colorRamp2 (see examples).
 #' @param size A grid::unit object, e.g. unit(2, "cm"). This is the height or width of the annotation depending on the orientation.
-#' @param ... The arguments that will be passed to top_annotation or left_annotation of the ComplexHeatmap container
+#' @param ... The arguments that will be passed to 
+#'   \code{\link[ComplexHeatmap:anno_barplot]{anno_barplot}} and 
+#'   \code{\link[ComplexHeatmap:HeatmapAnnotation]{HeatmapAnnotation}}
+#'   if you want to fine tune the aesthetics.
 #'
 #' @details It uses `ComplexHeatmap` as visualisation tool.
 #' 
@@ -578,117 +657,580 @@ setMethod("add_line", "InputHeatmap", function(.data,
 #'
 #' @examples
 #'
-#' library(dplyr)
 #' 
 #' hm = 
-#'   tidyHeatmap::N52 %>%
+#'   tidyHeatmap::N52 |>
 #'   tidyHeatmap::heatmap(
 #'     .row = symbol_ct,
 #'     .column = UBR,
 #'     .value = `read count normalised log`
 #' )
 #' 
-#' hm %>% add_bar(inflection)
+#' hm |> annotation_bar(inflection)
 #'
 #'
 #' @export
-setGeneric("add_bar", function(.data,
-																.column,
-																palette = NULL, size = NULL,...)
-	standardGeneric("add_bar"))
+#' @references Mangiola, S. and Papenfuss, A.T., 2020. "tidyHeatmap: an R package for 
+#'   modular heatmap production based on tidy principles." Journal of Open Source Software.
+#'   doi:10.21105/joss.02472.
+#' @source [Mangiola and Papenfuss., 2020](https://joss.theoj.org/papers/10.21105/joss.02472)
+setGeneric("annotation_bar", function(.data,
+																			.column,
+																			palette = NULL, size = NULL,...)
+	standardGeneric("annotation_bar"))
 
-#' add_bar
+#' annotation_bar
 #' 
 #' @docType methods
-#' @rdname add_bar-method
+#' @rdname annotation_bar-method
 #' 
 #' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
 #'
-setMethod("add_bar", "InputHeatmap", function(.data,
-																							 .column,
-																							 palette = NULL, size = NULL,...){
+setMethod("annotation_bar", "InputHeatmap", function(.data,
+																										 .column,
+																										 palette = NULL, size = NULL,...){
 	
 	.column = enquo(.column)
 	
-	.data %>% add_annotation(	!!.column,	type = "bar", 		size = size,...)
+	.data |> add_annotation(	!!.column,	type = "bar", size = size,...)
 	
+})
+
+#' Adds a numeric annotation layer to an `InputHeatmap`, that on evaluation creates a `ComplexHeatmap`
+#'
+#' \lifecycle{maturing}
+#'
+#' @description `annotation_numeric()` from an `InputHeatmap` object adds a numeric annotation layer.
+#'
+#' @importFrom rlang enquo
+#' @importFrom grid unit 
+#'
+#' @name annotation_numeric
+#' @rdname annotation_numeric-method
+#'
+#' @param .data A `tbl_df` formatted as | <ELEMENT> | <FEATURE> | <VALUE> | <...> |
+#' @param .column Vector of quotes
+#' @param palette A character vector of colours, or a function such as colorRamp2 (see examples).
+#' @param size A grid::unit object, e.g. unit(2, "cm"). This is the height or width of the annotation depending on the orientation.
+#' @param labels_format A function to format the numeric labels. By default, 
+#' it formats numbers to two decimal places using `sprintf("%.2f", x)`. You can
+#' supply any function that takes a numeric vector and returns a character vector
+#' for customised formatting.
+#' @param ... The arguments that will be passed to 
+#'   \code{\link[ComplexHeatmap:anno_numeric]{anno_numeric}} and 
+#'   \code{\link[ComplexHeatmap:HeatmapAnnotation]{HeatmapAnnotation}}
+#'   if you want to fine tune the aesthetics.
+#'
+#' @details It uses `ComplexHeatmap` as the visualisation tool.
+#'
+#' @return An `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`.
+#'
+#' @examples
+#'
+#' hm = 
+#'   tidyHeatmap::N52 |>
+#'   tidyHeatmap::heatmap(
+#'     .row = symbol_ct,
+#'     .column = UBR,
+#'     .value = `read count normalised log`
+#' )
+#' 
+#' hm |> annotation_numeric(inflection)
+#' 
+#' # Align to the right 
+#' hm |> annotation_numeric(inflection, align_to = "right")
+#'
+#' @export
+#' @references Mangiola, S. and Papenfuss, A.T., 2020. "tidyHeatmap: an R package for 
+#'   modular heatmap production based on tidy principles." Journal of Open Source Software.
+#'   doi:10.21105/joss.02472.
+#' @source [Mangiola and Papenfuss, 2020](https://joss.theoj.org/papers/10.21105/joss.02472)
+setGeneric("annotation_numeric", function(.data,
+                                          .column,
+                                          palette = NULL, size = NULL, labels_format = function(x) sprintf("%.1f", x), ...)
+  standardGeneric("annotation_numeric"))
+
+#' annotation_numeric
+#' 
+#' @docType methods
+#' @rdname annotation_numeric-method
+#' 
+#' @return An `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`.
+#'
+setMethod("annotation_numeric", "InputHeatmap", function(.data,
+                                                         .column,
+                                                         palette = NULL, size = NULL, labels_format = function(x) sprintf("%.1f", x), ...) {
+  .column <- enquo(.column)
+  
+  .data |> add_annotation(!!.column, type = "numeric", size = size, labels_format = labels_format, ...)
 })
 
 #' Adds a layers of symbols above the heatmap tiles to a `InputHeatmap`, that on evaluation creates a `ComplexHeatmap`
 #'
 #' \lifecycle{maturing}
 #'
-#' @description layer_symbol() from a `InputHeatmap` object, adds a bar annotation layer.
+#' @description layer_arrow_up() from a `InputHeatmap` object, adds a bar annotation layer.
 #'
 #' @importFrom rlang enquo
-#' @importFrom magrittr "%>%"
 #' 
 #'
-#' @name layer_symbol
-#' @rdname layer_symbol-method
+#' @name layer_arrow_up
+#' @rdname layer_arrow_up-method
 #'
 #' @param .data A `InputHeatmap` 
 #' @param ... Expressions that return a logical value, and are defined in terms of the variables in .data. If multiple expressions are included, they are combined with the & operator. Only rows for which all conditions evaluate to TRUE are kept.
-#' @param symbol A character string of length one. The values allowed are "point" ,     "square" ,    "diamond" ,   "arrow_up" ,  "arrow_down"
+#' @param .size A column name or a double. The size of the elements of the layer.
 #'
 #'
 #' @details It uses `ComplexHeatmap` as visualisation tool.
 #' 
 #' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
 #'
-#' @docType methods
-#' 
-#' @keywords internal
-#' @noRd
-#' 
+#'
+#'
 #' @examples
 #'
-#' library(dplyr)
 #' 
 #' hm = 
-#'   tidyHeatmap::N52 %>%
+#'   tidyHeatmap::N52 |>
 #'   tidyHeatmap::heatmap(
 #'     .row = symbol_ct,
 #'     .column = UBR,
 #'     .value = `read count normalised log`
 #' )
 #' 
-#' hm %>% layer_symbol()
+#' hm |> layer_arrow_up()
 #'
 #'
-setGeneric("layer_symbol", function(.data,
-																		...,
-																		symbol = "point")
-	standardGeneric("layer_symbol"))
+#' @export
+#' @references Mangiola, S. and Papenfuss, A.T., 2020. "tidyHeatmap: an R package for 
+#'   modular heatmap production based on tidy principles." Journal of Open Source Software.
+#'   doi:10.21105/joss.02472.
+#' @source [Mangiola and Papenfuss., 2020](https://joss.theoj.org/papers/10.21105/joss.02472)
+setGeneric("layer_arrow_up", function(.data,..., 
+																			.size = NULL)
+	standardGeneric("layer_arrow_up"))
 
-#' layer_symbol
+#' layer_arrow_up
 #' 
 #' @docType methods
-#' @rdname layer_symbol-method
+#' @rdname layer_arrow_up-method
 #' 
-#' @keywords internal
-#' @noRd
 #' 
 #' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
 #'
-setMethod("layer_symbol", "InputHeatmap", function(.data,
-																									 ...,
-																									 symbol = "point"){
+setMethod("layer_arrow_up", "InputHeatmap", function(.data,..., 
+																										 .size = NULL){ .data |>	layer_symbol(..., symbol="arrow_up", .size = !!enquo(.size)) })
+
+#' Adds a layers of symbols above the heatmap tiles to a `InputHeatmap`, that on evaluation creates a `ComplexHeatmap`
+#'
+#' \lifecycle{maturing}
+#'
+#' @description layer_arrow_down() from a `InputHeatmap` object, adds a bar annotation layer.
+#'
+#' @importFrom rlang enquo
+#' 
+#'
+#' @name layer_arrow_down
+#' @rdname layer_arrow_down-method
+#' 
+#'
+#' @param .data A `InputHeatmap` 
+#' @param ... Expressions that return a logical value, and are defined in terms of the variables in .data. If multiple expressions are included, they are combined with the & operator. Only rows for which all conditions evaluate to TRUE are kept.
+#' @param .size A column name or a double. The size of the elements of the layer.
+#'
+#'
+#' @details It uses `ComplexHeatmap` as visualisation tool.
+#' 
+#' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
+#'
+#'
+#'
+#' @examples
+#'
+#' 
+#' hm = 
+#'   tidyHeatmap::N52 |>
+#'   tidyHeatmap::heatmap(
+#'     .row = symbol_ct,
+#'     .column = UBR,
+#'     .value = `read count normalised log`
+#' )
+#' 
+#' hm |> layer_arrow_down()
+#'
+#'
+#' @export
+#' @references Mangiola, S. and Papenfuss, A.T., 2020. "tidyHeatmap: an R package for 
+#'   modular heatmap production based on tidy principles." Journal of Open Source Software.
+#'   doi:10.21105/joss.02472.
+#' @source [Mangiola and Papenfuss., 2020](https://joss.theoj.org/papers/10.21105/joss.02472)
+setGeneric("layer_arrow_down", function(.data,..., 
+																				.size = NULL)
+	standardGeneric("layer_arrow_down"))
+
+#' layer_arrow_down
+#' 
+#' @docType methods
+#' @rdname layer_arrow_down-method
+#' 
+#' 
+#' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
+#'
+setMethod("layer_arrow_down", "InputHeatmap", function(.data,..., 
+																											 .size = NULL){ .data |>	layer_symbol(..., symbol="arrow_down", .size = !!enquo(.size)) })
+
+#' Adds a layers of symbols above the heatmap tiles to a `InputHeatmap`, that on evaluation creates a `ComplexHeatmap`
+#'
+#' \lifecycle{maturing}
+#'
+#' @description layer_point() from a `InputHeatmap` object, adds a bar annotation layer.
+#'
+#' @importFrom rlang enquo
+#' 
+#'
+#' @name layer_point
+#' @rdname layer_point-method
+#'
+#' @param .data A `InputHeatmap` 
+#' @param ... Expressions that return a logical value, and are defined in terms of the variables in .data. If multiple expressions are included, they are combined with the & operator. Only rows for which all conditions evaluate to TRUE are kept.
+#' @param .size A column name or a double. The size of the elements of the layer.
+#'
+#'
+#' @details It uses `ComplexHeatmap` as visualisation tool.
+#' 
+#' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
+#'
+#'
+#'
+#' @examples
+#'
+#' 
+#' hm = 
+#'   tidyHeatmap::N52 |>
+#'   tidyHeatmap::heatmap(
+#'     .row = symbol_ct,
+#'     .column = UBR,
+#'     .value = `read count normalised log`
+#' )
+#' 
+#' hm |> layer_point()
+#'
+#'
+#' @export
+#' @references Mangiola, S. and Papenfuss, A.T., 2020. "tidyHeatmap: an R package for 
+#'   modular heatmap production based on tidy principles." Journal of Open Source Software.
+#'   doi:10.21105/joss.02472.
+#' @source [Mangiola and Papenfuss., 2020](https://joss.theoj.org/papers/10.21105/joss.02472)
+setGeneric("layer_point", function(.data,..., 
+																	 .size = NULL)
+	standardGeneric("layer_point"))
+
+#' layer_point
+#' 
+#' @docType methods
+#' @rdname layer_point-method
+#' 
+#' 
+#' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
+#'
+setMethod("layer_point", "InputHeatmap", function(.data,..., 
+																									.size = NULL){ .data |>	layer_symbol(..., symbol="point", .size = !!enquo(.size)) })
+
+#' Adds a layers of symbols above the heatmap tiles to a `InputHeatmap`, that on evaluation creates a `ComplexHeatmap`
+#'
+#' \lifecycle{maturing}
+#'
+#' @description layer_square() from a `InputHeatmap` object, adds a bar annotation layer.
+#'
+#' @importFrom rlang enquo
+#' 
+#'
+#' @name layer_square
+#' @rdname layer_square-method
+#'
+#' @param .data A `InputHeatmap` 
+#' @param ... Expressions that return a logical value, and are defined in terms of the variables in .data. If multiple expressions are included, they are combined with the & operator. Only rows for which all conditions evaluate to TRUE are kept.
+#' @param .size A column name or a double. The size of the elements of the layer.
+#'
+#'
+#' @details It uses `ComplexHeatmap` as visualisation tool.
+#' 
+#' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
+#'
+#'
+#'
+#' @examples
+#'
+#' 
+#' hm = 
+#'   tidyHeatmap::N52 |>
+#'   tidyHeatmap::heatmap(
+#'     .row = symbol_ct,
+#'     .column = UBR,
+#'     .value = `read count normalised log`
+#' )
+#' 
+#' hm |> layer_square()
+#'
+#'
+#' @export
+#' @references Mangiola, S. and Papenfuss, A.T., 2020. "tidyHeatmap: an R package for 
+#'   modular heatmap production based on tidy principles." Journal of Open Source Software.
+#'   doi:10.21105/joss.02472.
+#' @source [Mangiola and Papenfuss., 2020](https://joss.theoj.org/papers/10.21105/joss.02472)
+setGeneric("layer_square", function(.data,..., 
+																		.size = NULL)
+	standardGeneric("layer_square"))
+
+#' layer_square
+#' 
+#' @docType methods
+#' @rdname layer_square-method
+#' 
+#' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
+#'
+setMethod("layer_square", "InputHeatmap", function(.data,..., 
+																									 .size = NULL){ .data |>	layer_symbol(..., symbol="square", .size = !!enquo(.size)) })
+
+#' Adds a layers of symbols above the heatmap tiles to a `InputHeatmap`, that on evaluation creates a `ComplexHeatmap`
+#'
+#' \lifecycle{maturing}
+#'
+#' @description layer_diamond() from a `InputHeatmap` object, adds a bar annotation layer.
+#'
+#' @importFrom rlang enquo
+#' 
+#'
+#' @name layer_diamond
+#' @rdname layer_diamond-method
+#'
+#' @param .data A `InputHeatmap` 
+#' @param ... Expressions that return a logical value, and are defined in terms of the variables in .data. If multiple expressions are included, they are combined with the & operator. Only rows for which all conditions evaluate to TRUE are kept.
+#' @param .size A column name or a double. The size of the elements of the layer.
+#'
+#'
+#' @details It uses `ComplexHeatmap` as visualisation tool.
+#' 
+#' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
+#'
+#'
+#'
+#' @examples
+#'
+#' 
+#' hm = 
+#'   tidyHeatmap::N52 |>
+#'   tidyHeatmap::heatmap(
+#'     .row = symbol_ct,
+#'     .column = UBR,
+#'     .value = `read count normalised log`
+#' )
+#' 
+#' hm |> layer_diamond()
+#'
+#'
+#' @export
+#' @references Mangiola, S. and Papenfuss, A.T., 2020. "tidyHeatmap: an R package for 
+#'   modular heatmap production based on tidy principles." Journal of Open Source Software.
+#'   doi:10.21105/joss.02472.
+#' @source [Mangiola and Papenfuss., 2020](https://joss.theoj.org/papers/10.21105/joss.02472)
+setGeneric("layer_diamond", function(.data,..., 
+																		 .size = NULL)
+	standardGeneric("layer_diamond"))
+
+#' layer_diamond
+#' 
+#' @docType methods
+#' @rdname layer_diamond-method
+#' 
+#' 
+#' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
+setMethod("layer_diamond", "InputHeatmap", function(.data,..., 
+																										.size = NULL){ .data |>	layer_symbol(..., symbol="diamond", .size = !!enquo(.size)) })
+
+#' Adds a layer of symbols above the heatmap tiles to a `InputHeatmap`, that on evaluation creates a `ComplexHeatmap`
+#'
+#' \lifecycle{maturing}
+#'
+#' @description layer_star() from a `InputHeatmap` object, adds a symbol annotation layer over the heatmap tiles.
+#'
+#' @importFrom rlang enquo
+#' 
+#'
+#' @name layer_star
+#' @rdname layer_star-method
+#'
+#' @param .data A `InputHeatmap` 
+#' @param ... Expressions that return a logical value, and are defined in terms of the variables in .data. If multiple expressions are included, they are combined with the & operator. Only rows for which all conditions evaluate to TRUE are kept.
+#' @param .size A column name or a double. The size of the elements of the layer.
+#'
+#'
+#' @details It uses `ComplexHeatmap` as visualisation tool.
+#' 
+#' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
+#'
+#'
+#'
+#' @examples
+#'
+#' 
+#' hm = 
+#'   tidyHeatmap::N52 |>
+#'   tidyHeatmap::heatmap(
+#'     .row = symbol_ct,
+#'     .column = UBR,
+#'     .value = `read count normalised log`
+#' )
+#' 
+#' hm |> layer_star()
+#'
+#'
+#' @export
+#' @references Mangiola, S. and Papenfuss, A.T., 2020. "tidyHeatmap: an R package for 
+#'   modular heatmap production based on tidy principles." Journal of Open Source Software.
+#'   doi:10.21105/joss.02472.
+#' @source [Mangiola and Papenfuss., 2020](https://joss.theoj.org/papers/10.21105/joss.02472)
+setGeneric("layer_star", function(.data,..., 
+																	.size = NULL)
+	standardGeneric("layer_star"))
+
+#' layer_star
+#' 
+#' @docType methods
+#' @rdname layer_star-method
+#' 
+#' 
+#' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
+setMethod("layer_star", "InputHeatmap", function(.data,..., 
+																								 .size = NULL){ .data |>	layer_symbol(..., symbol="star", .size = !!enquo(.size)) })
+
+#' Adds a layer of symbols above the heatmap tiles to a `InputHeatmap`, that on evaluation creates a `ComplexHeatmap`
+#'
+#' \lifecycle{maturing}
+#'
+#' @description layer_asterisk() from a `InputHeatmap` object, adds a symbol annotation layer over the heatmap tiles.
+#'
+#' @importFrom rlang enquo
+#' 
+#'
+#' @name layer_asterisk
+#' @rdname layer_asterisk-method
+#'
+#' @param .data A `InputHeatmap` 
+#' @param ... Expressions that return a logical value, and are defined in terms of the variables in .data. If multiple expressions are included, they are combined with the & operator. Only rows for which all conditions evaluate to TRUE are kept.
+#' @param .size A column name or a double. The size of the elements of the layer.
+#'
+#'
+#' @details It uses `ComplexHeatmap` as visualisation tool.
+#' 
+#' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
+#'
+#'
+#'
+#' @examples
+#'
+#' 
+#' hm = 
+#'   tidyHeatmap::N52 |>
+#'   tidyHeatmap::heatmap(
+#'     .row = symbol_ct,
+#'     .column = UBR,
+#'     .value = `read count normalised log`
+#' )
+#' 
+#' hm |> layer_asterisk()
+#'
+#'
+#' @export
+#' @references Mangiola, S. and Papenfuss, A.T., 2020. "tidyHeatmap: an R package for 
+#'   modular heatmap production based on tidy principles." Journal of Open Source Software.
+#'   doi:10.21105/joss.02472.
+#' @source [Mangiola and Papenfuss., 2020](https://joss.theoj.org/papers/10.21105/joss.02472)
+setGeneric("layer_asterisk", function(.data,..., 
+																			.size = NULL)
+	standardGeneric("layer_asterisk"))
+
+#' layer_asterisk
+#' 
+#' @docType methods
+#' @rdname layer_asterisk-method
+#' 
+#' 
+#' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
+setMethod("layer_asterisk", "InputHeatmap", function(.data,..., 
+																										 .size = NULL){ .data |>	layer_symbol(..., symbol="asterisk", .size = !!enquo(.size)) })
+
+
+#' Adds a layers of texts above the heatmap tiles to a `InputHeatmap`, that on evaluation creates a `ComplexHeatmap`
+#'
+#' \lifecycle{maturing}
+#'
+#' @description layer_text() from a `InputHeatmap` object, adds a text annotation layer.
+#'
+#' @importFrom rlang enquo
+#' @importFrom magrittr "%>%"
+#' 
+#' 
+#'
+#' @name layer_text
+#' @rdname layer_text-method
+#'
+#' @param .data A `InputHeatmap` 
+#' @param ... Expressions that return a logical value, and are defined in terms of the variables in .data. If multiple expressions are included, they are combined with the & operator. Only rows for which all conditions evaluate to TRUE are kept.
+#' @param .value A column name or character string. 
+#' @param .size A column name or a double. The size of the elements of the layer.
+#'
+#'
+#' @details It uses `ComplexHeatmap` as visualisation tool.
+#' 
+#' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
+#'
+#' 
+#' 
+#' @examples
+#'
+#' library(dplyr)
+#' 
+#' hm = 
+#'   tidyHeatmap::N52 |>
+#'   mutate(my_text = "t") |>
+#'   tidyHeatmap::heatmap(
+#'     .row = symbol_ct,
+#'     .column = UBR,
+#'     .value = `read count normalised log`
+#' ) 
+#' 
+#' hm |> layer_text(.value = "a")
+#' hm |> layer_text(.value = my_text)
+#'
+#' @export
+#' @references Mangiola, S. and Papenfuss, A.T., 2020. "tidyHeatmap: an R package for 
+#'   modular heatmap production based on tidy principles." Journal of Open Source Software.
+#'   doi:10.21105/joss.02472.
+#' @source [Mangiola and Papenfuss., 2020](https://joss.theoj.org/papers/10.21105/joss.02472)
+setGeneric("layer_text", function(.data,
+																	...,
+																	.value,
+																	.size = NULL)
+	standardGeneric("layer_text"))
+
+#' layer_text
+#' 
+#' @importFrom rlang quo_is_null
+#' 
+#' @docType methods
+#' @rdname layer_text-method
+#' 
+#' 
+#' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
+setMethod("layer_text", "InputHeatmap", function(.data,
+																								 ...,
+																								 .value,
+																								 .size = NULL){
 	
 	.data_drame = .data@data
-	
-	
-	symbol_dictionary = 
-		list(
-			point = 21,
-			square = 22,
-			diamond = 23,
-			arrow_up = 24,
-			arrow_down = 25
-		)
-	
-	if(!symbol %in% names(symbol_dictionary) | length(symbol) != 1) 
-		stop(sprintf("tidyHeatmap says: the symbol argument must be one character string, among %s", paste(names(symbol_dictionary))))
+	.size = enquo(.size)
 	
 	# Comply with CRAN NOTES
 	. = NULL
@@ -701,285 +1243,38 @@ setMethod("layer_symbol", "InputHeatmap", function(.data,
 	.vertical = .data@arguments$.vertical
 	.abundance = .data@arguments$.abundance
 	
+	# Extract the abundance matrix for dimensions of the text
+	abundance_mat = .data@input[[1]]
+
 	# Append which cells have to be signed
-	.data@layer_symbol= 
-		.data@layer_symbol %>%
+	.data@layer_text= 
+		.data@layer_text |>
 		bind_rows(
-			.data_drame %>%
-				droplevels() %>%
+			
+			.data_drame |>
+				droplevels() |>
 				mutate(
-					column = !!.horizontal %>% as.factor %>% as.integer,
-					row = !!.vertical %>% as.factor %>% as.integer
-				) %>%
-				filter(...) %>%
-				select(column, row) %>%
-				mutate(shape = symbol_dictionary[[symbol]])
+					column = !!.horizontal %>%  as.factor()  %>%  as.integer(),
+					row = !!.vertical  %>%  as.factor() %>% as.integer()
+				) |>
+				filter(...) |>
+				mutate(text := as.character( !!enquo(.value) )) |> 
+				
+				# Add size
+				when(
+					quo_is_null(.size) ~ mutate(., size = min(12, 320 / max(dim(abundance_mat)) )) ,
+					~ mutate(., size := !!.size )
+					) |> 
+				
+				select(column, row, text, size) 
+				
+
 		)
 	
 	.data
-
+	
 	
 })
-
-#' Adds a layers of symbols above the heatmap tiles to a `InputHeatmap`, that on evaluation creates a `ComplexHeatmap`
-#'
-#' \lifecycle{maturing}
-#'
-#' @description layer_arrow_up() from a `InputHeatmap` object, adds a bar annotation layer.
-#'
-#' @importFrom rlang enquo
-#' @importFrom magrittr "%>%"
-#' 
-#'
-#' @name layer_arrow_up
-#' @rdname layer_arrow_up-method
-#'
-#' @param .data A `InputHeatmap` 
-#' @param ... Expressions that return a logical value, and are defined in terms of the variables in .data. If multiple expressions are included, they are combined with the & operator. Only rows for which all conditions evaluate to TRUE are kept.
-#'
-#'
-#' @details It uses `ComplexHeatmap` as visualisation tool.
-#' 
-#' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
-#'
-#'
-#'
-#' @examples
-#'
-#' library(dplyr)
-#' 
-#' hm = 
-#'   tidyHeatmap::N52 %>%
-#'   tidyHeatmap::heatmap(
-#'     .row = symbol_ct,
-#'     .column = UBR,
-#'     .value = `read count normalised log`
-#' )
-#' 
-#' hm %>% layer_arrow_up()
-#'
-#'
-#' @export
-setGeneric("layer_arrow_up", function(.data,	...)
-	standardGeneric("layer_arrow_up"))
-
-#' layer_arrow_up
-#' 
-#' @docType methods
-#' @rdname layer_arrow_up-method
-#' 
-#' 
-#' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
-#'
-setMethod("layer_arrow_up", "InputHeatmap", function(.data, ...){ .data %>%	layer_symbol(..., symbol="arrow_up") })
-
-#' Adds a layers of symbols above the heatmap tiles to a `InputHeatmap`, that on evaluation creates a `ComplexHeatmap`
-#'
-#' \lifecycle{maturing}
-#'
-#' @description layer_arrow_down() from a `InputHeatmap` object, adds a bar annotation layer.
-#'
-#' @importFrom rlang enquo
-#' @importFrom magrittr "%>%"
-#' 
-#'
-#' @name layer_arrow_down
-#' @rdname layer_arrow_down-method
-#' 
-#'
-#' @param .data A `InputHeatmap` 
-#' @param ... Expressions that return a logical value, and are defined in terms of the variables in .data. If multiple expressions are included, they are combined with the & operator. Only rows for which all conditions evaluate to TRUE are kept.
-#'
-#'
-#' @details It uses `ComplexHeatmap` as visualisation tool.
-#' 
-#' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
-#'
-#'
-#'
-#' @examples
-#'
-#' library(dplyr)
-#' 
-#' hm = 
-#'   tidyHeatmap::N52 %>%
-#'   tidyHeatmap::heatmap(
-#'     .row = symbol_ct,
-#'     .column = UBR,
-#'     .value = `read count normalised log`
-#' )
-#' 
-#' hm %>% layer_arrow_down()
-#'
-#'
-#' @export
-setGeneric("layer_arrow_down", function(.data,	...)
-	standardGeneric("layer_arrow_down"))
-
-#' layer_arrow_down
-#' 
-#' @docType methods
-#' @rdname layer_arrow_down-method
-#' 
-#' 
-#' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
-#'
-setMethod("layer_arrow_down", "InputHeatmap", function(.data, ...){ .data %>%	layer_symbol(..., symbol="arrow_down") })
-
-#' Adds a layers of symbols above the heatmap tiles to a `InputHeatmap`, that on evaluation creates a `ComplexHeatmap`
-#'
-#' \lifecycle{maturing}
-#'
-#' @description layer_point() from a `InputHeatmap` object, adds a bar annotation layer.
-#'
-#' @importFrom rlang enquo
-#' @importFrom magrittr "%>%"
-#' 
-#'
-#' @name layer_point
-#' @rdname layer_point-method
-#'
-#' @param .data A `InputHeatmap` 
-#' @param ... Expressions that return a logical value, and are defined in terms of the variables in .data. If multiple expressions are included, they are combined with the & operator. Only rows for which all conditions evaluate to TRUE are kept.
-#'
-#'
-#' @details It uses `ComplexHeatmap` as visualisation tool.
-#' 
-#' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
-#'
-#'
-#'
-#' @examples
-#'
-#' library(dplyr)
-#' 
-#' hm = 
-#'   tidyHeatmap::N52 %>%
-#'   tidyHeatmap::heatmap(
-#'     .row = symbol_ct,
-#'     .column = UBR,
-#'     .value = `read count normalised log`
-#' )
-#' 
-#' hm %>% layer_point()
-#'
-#'
-#' @export
-setGeneric("layer_point", function(.data,	...)
-	standardGeneric("layer_point"))
-
-#' layer_point
-#' 
-#' @docType methods
-#' @rdname layer_point-method
-#' 
-#' 
-#' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
-#'
-setMethod("layer_point", "InputHeatmap", function(.data, ...){ .data %>%	layer_symbol(..., symbol="point") })
-
-#' Adds a layers of symbols above the heatmap tiles to a `InputHeatmap`, that on evaluation creates a `ComplexHeatmap`
-#'
-#' \lifecycle{maturing}
-#'
-#' @description layer_square() from a `InputHeatmap` object, adds a bar annotation layer.
-#'
-#' @importFrom rlang enquo
-#' @importFrom magrittr "%>%"
-#' 
-#'
-#' @name layer_square
-#' @rdname layer_square-method
-#'
-#' @param .data A `InputHeatmap` 
-#' @param ... Expressions that return a logical value, and are defined in terms of the variables in .data. If multiple expressions are included, they are combined with the & operator. Only rows for which all conditions evaluate to TRUE are kept.
-#'
-#'
-#' @details It uses `ComplexHeatmap` as visualisation tool.
-#' 
-#' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
-#'
-#'
-#'
-#' @examples
-#'
-#' library(dplyr)
-#' 
-#' hm = 
-#'   tidyHeatmap::N52 %>%
-#'   tidyHeatmap::heatmap(
-#'     .row = symbol_ct,
-#'     .column = UBR,
-#'     .value = `read count normalised log`
-#' )
-#' 
-#' hm %>% layer_square()
-#'
-#'
-#' @export
-setGeneric("layer_square", function(.data,	...)
-	standardGeneric("layer_square"))
-
-#' layer_square
-#' 
-#' @docType methods
-#' @rdname layer_square-method
-#' 
-#' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
-#'
-setMethod("layer_square", "InputHeatmap", function(.data, ...){ .data %>%	layer_symbol(..., symbol="square") })
-
-#' Adds a layers of symbols above the heatmap tiles to a `InputHeatmap`, that on evaluation creates a `ComplexHeatmap`
-#'
-#' \lifecycle{maturing}
-#'
-#' @description layer_diamond() from a `InputHeatmap` object, adds a bar annotation layer.
-#'
-#' @importFrom rlang enquo
-#' @importFrom magrittr "%>%"
-#' 
-#'
-#' @name layer_diamond
-#' @rdname layer_diamond-method
-#'
-#' @param .data A `InputHeatmap` 
-#' @param ... Expressions that return a logical value, and are defined in terms of the variables in .data. If multiple expressions are included, they are combined with the & operator. Only rows for which all conditions evaluate to TRUE are kept.
-#'
-#'
-#' @details It uses `ComplexHeatmap` as visualisation tool.
-#' 
-#' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
-#'
-#'
-#'
-#' @examples
-#'
-#' library(dplyr)
-#' 
-#' hm = 
-#'   tidyHeatmap::N52 %>%
-#'   tidyHeatmap::heatmap(
-#'     .row = symbol_ct,
-#'     .column = UBR,
-#'     .value = `read count normalised log`
-#' )
-#' 
-#' hm %>% layer_diamond()
-#'
-#'
-#' @export
-setGeneric("layer_diamond", function(.data,	...)
-	standardGeneric("layer_diamond"))
-
-#' layer_diamond
-#' 
-#' @docType methods
-#' @rdname layer_diamond-method
-#' 
-#' 
-#' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
-#'
-setMethod("layer_diamond", "InputHeatmap", function(.data, ...){ .data %>%	layer_symbol(..., symbol="diamond") })
 
 #' Split the heatmap row-wise depending on the biggest branches in the cladogram.
 #'
@@ -1008,19 +1303,22 @@ setMethod("layer_diamond", "InputHeatmap", function(.data, ...){ .data %>%	layer
 #' 
 #' @examples
 #'
-#' library(dplyr)
 #' 
 #' hm = 
-#'   tidyHeatmap::N52 %>%
+#'   tidyHeatmap::N52 |>
 #'   tidyHeatmap::heatmap(
 #'     .row = symbol_ct,
 #'     .column = UBR,
 #'     .value = `read count normalised log`
 #' )
 #' 
-#' hm %>% split_rows(2)
+#' hm |> split_rows(2)
 #'
 #' @export
+#' @references Mangiola, S. and Papenfuss, A.T., 2020. "tidyHeatmap: an R package for 
+#'   modular heatmap production based on tidy principles." Journal of Open Source Software.
+#'   doi:10.21105/joss.02472.
+#' @source [Mangiola and Papenfuss., 2020](https://joss.theoj.org/papers/10.21105/joss.02472)
 setGeneric("split_rows", function(.data,
 																	number_of_groups)
 	standardGeneric("split_rows"))
@@ -1033,24 +1331,23 @@ setGeneric("split_rows", function(.data,
 #' 
 #' 
 #' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
-#'
 setMethod("split_rows", "InputHeatmap", function(.data,
 																								 number_of_groups){
 	
 	# Get the same methods as the heatmap
-	distance_method = .data@input %>% when(
+	distance_method = .data@input |> when(
 		"clustering_distance_rows" %in% names(.) ~ .data@input$clustering_distance_rows,
 		~ "euclidean"
 	)
-	clustering_method = .data@input %>% when(
+	clustering_method = .data@input |> when(
 		"clustering_method_rows" %in% names(.) ~ .data@input$clustering_method_rows,
 		~ "complete"
 	)
 	
 	# Get clusters
 	hr = 
-		.data@input[[1]] %>%
-		dist(method = distance_method) %>%
+		.data@input[[1]] |>
+		dist(method = distance_method) |>
 		hclust(method = clustering_method)
 	
 	# Append to input
@@ -1086,19 +1383,22 @@ setMethod("split_rows", "InputHeatmap", function(.data,
 #' 
 #' @examples
 #'
-#' library(dplyr)
 #' 
 #' hm = 
-#'   tidyHeatmap::N52 %>%
+#'   tidyHeatmap::N52 |>
 #'   tidyHeatmap::heatmap(
 #'     .row = symbol_ct,
 #'     .column = UBR,
 #'     .value = `read count normalised log`
 #' )
 #' 
-#' hm %>% split_columns(2)
+#' hm |> split_columns(2)
 #'
 #' @export
+#' @references Mangiola, S. and Papenfuss, A.T., 2020. "tidyHeatmap: an R package for 
+#'   modular heatmap production based on tidy principles." Journal of Open Source Software.
+#'   doi:10.21105/joss.02472.
+#' @source [Mangiola and Papenfuss., 2020](https://joss.theoj.org/papers/10.21105/joss.02472)
 setGeneric("split_columns", function(.data,
 																		 number_of_groups)
 	standardGeneric("split_columns"))
@@ -1110,25 +1410,24 @@ setGeneric("split_columns", function(.data,
 #' 
 #' 
 #' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
-#'
 setMethod("split_columns", "InputHeatmap", function(.data,
 																										number_of_groups){
 	
 	# Get the same methods as the heatmap
-	distance_method = .data@input %>% when(
+	distance_method = .data@input |> when(
 		"clustering_distance_columns" %in% names(.) ~ .data@input$clustering_distance_columns,
 		~ "euclidean"
 	)
-	clustering_method = .data@input %>% when(
+	clustering_method = .data@input |> when(
 		"clustering_method_columns" %in% names(.) ~ .data@input$clustering_method_columns,
 		~ "complete"
 	)
 	
 	# Get clusters
 	hr = 
-		.data@input[[1]] %>%
-		t() %>%
-		dist(method = distance_method) %>%
+		.data@input[[1]] |>
+		t() |>
+		dist(method = distance_method) |>
 		hclust(method = clustering_method)
 	
 	# Append to input
@@ -1164,20 +1463,22 @@ setMethod("split_columns", "InputHeatmap", function(.data,
 #' @examples
 #' 
 #' 
-#' library(dplyr)
 #' 	tidyHeatmap::heatmap(
 #'   dplyr::group_by(tidyHeatmap::pasilla,		location, type),
 #'   .column = sample,
 #'   .row = symbol,
 #'   .value = `count normalised adjusted`,
-#'  ) %>%
+#'  ) |>
 #'  save_pdf(tempfile())
 #'
 #' 
 #' @docType methods
 #' @rdname save_pdf-methods
 #' @export
-#'
+#' @references Mangiola, S. and Papenfuss, A.T., 2020. "tidyHeatmap: an R package for 
+#'   modular heatmap production based on tidy principles." Journal of Open Source Software.
+#'   doi:10.21105/joss.02472.
+#' @source [Mangiola and Papenfuss., 2020](https://joss.theoj.org/papers/10.21105/joss.02472)
 setGeneric("save_pdf", function(.heatmap,
 																filename,
 																width = NULL,
@@ -1218,8 +1519,6 @@ setGeneric("save_pdf", function(.heatmap,
 #' @param width A `double`. Plot width
 #' @param height A `double`. Plot height
 #' @param units	A character string. units ("in", "cm", or "mm")
-#' 
-#' 
 setMethod("save_pdf", "Heatmap", .save_pdf)
 
 #' save_pdf
@@ -1229,8 +1528,6 @@ setMethod("save_pdf", "Heatmap", .save_pdf)
 #' @param width A `double`. Plot width
 #' @param height A `double`. Plot height
 #' @param units	A character string. units ("in", "cm", or "mm")
-#' 
-#' 
 setMethod("save_pdf", "InputHeatmap", .save_pdf)
 
 

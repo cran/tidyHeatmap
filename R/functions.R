@@ -24,6 +24,7 @@
 #' @importFrom purrr when
 #' @importFrom rlang dots_list
 #' @importFrom methods new
+#' @importFrom tidyr pivot_wider
 #'
 #' @name input_heatmap
 #' @rdname input_heatmap
@@ -42,11 +43,10 @@
 #'
 #' @return A `ComplexHeatmap` object
 #'
-#'
-#'
-#'
-#'
-#'
+#' @references Mangiola, S. and Papenfuss, A.T., 2020. "tidyHeatmap: an R package for 
+#'   modular heatmap production based on tidy principles." Journal of Open Source Software.
+#'   doi:10.21105/joss.02472.
+#' @source [Mangiola and Papenfuss., 2020](https://joss.theoj.org/papers/10.21105/joss.02472)
 input_heatmap = function(.data,
 												.horizontal,
 												.vertical,
@@ -123,7 +123,11 @@ input_heatmap = function(.data,
 		) %>%
 		
 		distinct(!!.vertical,!!.horizontal,!!.abundance) %>%
-		spread(!!.horizontal,!!.abundance)
+	  
+	  # Arrange both columns and rows
+	  # do not leave the order of appearence dictate the order of columns and rows
+	  pivot_wider(names_from =  !!.horizontal, values_from =  !!.abundance, names_sort = TRUE) |> 
+	  arrange(!!.vertical)
 	
 	abundance_mat =
 		abundance_tbl %>%
@@ -224,8 +228,9 @@ add_grouping = function(my_input_heatmap){
 	my_input_heatmap@palette_discrete = my_input_heatmap@palette_discrete %>% tail(-how_many_grouping)
 	
 	# See if I have grouping and setup framework
-	group_annotation = get_group_annotation(
-		my_input_heatmap@data,
+	group_annotation = 
+	  my_input_heatmap@data |>
+	  get_group_annotation(
 		!!.horizontal,
 		!!.vertical,
 		!!.abundance,
@@ -295,11 +300,10 @@ add_grouping = function(my_input_heatmap){
 #'
 #' @return A `ComplexHeatmap` object
 #'
-#'
-#'
-#'
-#'
-#'
+#' @references Mangiola, S. and Papenfuss, A.T., 2020. "tidyHeatmap: an R package for 
+#'   modular heatmap production based on tidy principles." Journal of Open Source Software.
+#'   doi:10.21105/joss.02472.
+#' @source [Mangiola and Papenfuss., 2020](https://joss.theoj.org/papers/10.21105/joss.02472)
 add_annotation = function(my_input_heatmap,
 												 annotation,
 												 type = rep("tile", length(quo_names(annotation))),
@@ -401,3 +405,129 @@ add_annotation = function(my_input_heatmap,
 	my_input_heatmap
 	
 }
+
+#' Adds a layers of symbols above the heatmap tiles to a `InputHeatmap`, that on evaluation creates a `ComplexHeatmap`
+#'
+#' \lifecycle{maturing}
+#'
+#' @description layer_symbol() from a `InputHeatmap` object, adds a symbol annotation layer.
+#'
+#' @importFrom rlang enquo
+#' @importFrom magrittr "%>%"
+#' 
+#' 
+#'
+#' @name layer_symbol
+#' @rdname layer_symbol-method
+#'
+#' @param .data A `InputHeatmap` 
+#' @param ... Expressions that return a logical value, and are defined in terms of the variables in .data. If multiple expressions are included, they are combined with the & operator. Only rows for which all conditions evaluate to TRUE are kept.
+#' @param symbol A character string of length one. The values allowed are "point" ,     "square" ,    "diamond" ,   "arrow_up" ,  "arrow_down",  "star",  "asterisk"
+#'
+#'
+#' @details It uses `ComplexHeatmap` as visualisation tool.
+#' 
+#' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
+#'
+#' @docType methods
+#' 
+#' @keywords internal
+#' @noRd
+#' 
+#' @examples
+#'
+#' library(dplyr)
+#' 
+#' hm = 
+#'   tidyHeatmap::N52 |>
+#'   tidyHeatmap::heatmap(
+#'     .row = symbol_ct,
+#'     .column = UBR,
+#'     .value = `read count normalised log`
+#' )
+#' 
+#' hm |> layer_symbol()
+#'
+#' @references Mangiola, S. and Papenfuss, A.T., 2020. "tidyHeatmap: an R package for 
+#'   modular heatmap production based on tidy principles." Journal of Open Source Software.
+#'   doi:10.21105/joss.02472.
+#' @source [Mangiola and Papenfuss., 2020](https://joss.theoj.org/papers/10.21105/joss.02472)
+setGeneric("layer_symbol", function(.data,
+																		...,
+																		symbol = "point",
+																		.size = NULL)
+	standardGeneric("layer_symbol"))
+
+#' layer_symbol
+#' 
+#' @docType methods
+#' @rdname layer_symbol-method
+#' 
+#' @keywords internal
+#' @noRd
+#' 
+#' @return A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
+#'
+setMethod("layer_symbol", "InputHeatmap", function(.data,
+																									 ...,
+																									 symbol = "point",
+																									 .size = NULL){
+	
+	.data_drame = .data@data
+	.size = enquo(.size)
+	
+	symbol_dictionary = 
+		list(
+			point = 21,
+			square = 22,
+			diamond = 23,
+			arrow_up = 24,
+			arrow_down = 25,
+			star = 8,
+			asterisk = 42
+		)
+	
+	if(!symbol %in% names(symbol_dictionary) | length(symbol) != 1) 
+		stop(sprintf("tidyHeatmap says: the symbol argument must be one character string, among %s", paste(names(symbol_dictionary))))
+	
+	# Comply with CRAN NOTES
+	. = NULL
+	column = NULL
+	row = NULL
+	
+	# Make col names
+	# Column names
+	.horizontal = .data@arguments$.horizontal
+	.vertical = .data@arguments$.vertical
+	.abundance = .data@arguments$.abundance
+	
+	# Extract the abundance matrix for dimensions of the text
+	abundance_mat = .data@input[[1]]
+	
+	# Append which cells have to be signed
+	.data@layer_symbol= 
+		.data@layer_symbol |>
+		bind_rows(
+			.data_drame |>
+				droplevels() |>
+				mutate(
+					column = !!.horizontal %>%  as.factor()  %>%  as.integer(),
+					row = !!.vertical  %>%  as.factor() %>% as.integer()
+				) |>
+				filter(...) |>
+				mutate(shape = symbol_dictionary[[!!symbol]]) |> 
+				
+				# Add size
+				when(
+					quo_is_null(.size) ~ mutate(., size = min(3, 80 / max(dim(abundance_mat)) )) ,
+					~ mutate(., size := !!.size )
+				) |> 
+				
+				select(column, row, shape, size) 
+		)
+	
+	.data
+	
+	
+})
+

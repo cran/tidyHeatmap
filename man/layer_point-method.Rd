@@ -5,15 +5,20 @@
 \alias{layer_point}
 \alias{layer_point,InputHeatmap-method}
 \title{Adds a layers of symbols above the heatmap tiles to a `InputHeatmap`, that on evaluation creates a `ComplexHeatmap`}
+\source{
+[Mangiola and Papenfuss., 2020](https://joss.theoj.org/papers/10.21105/joss.02472)
+}
 \usage{
-layer_point(.data, ...)
+layer_point(.data, ..., .size = NULL)
 
-\S4method{layer_point}{InputHeatmap}(.data, ...)
+\S4method{layer_point}{InputHeatmap}(.data, ..., .size = NULL)
 }
 \arguments{
 \item{.data}{A `InputHeatmap`}
 
 \item{...}{Expressions that return a logical value, and are defined in terms of the variables in .data. If multiple expressions are included, they are combined with the & operator. Only rows for which all conditions evaluate to TRUE are kept.}
+
+\item{.size}{A column name or a double. The size of the elements of the layer.}
 }
 \value{
 A `InputHeatmap` object that gets evaluated to a `ComplexHeatmap`
@@ -30,17 +35,21 @@ It uses `ComplexHeatmap` as visualisation tool.
 }
 \examples{
 
-library(dplyr)
 
 hm = 
-  tidyHeatmap::N52 \%>\%
+  tidyHeatmap::N52 |>
   tidyHeatmap::heatmap(
     .row = symbol_ct,
     .column = UBR,
     .value = `read count normalised log`
 )
 
-hm \%>\% layer_point()
+hm |> layer_point()
 
 
+}
+\references{
+Mangiola, S. and Papenfuss, A.T., 2020. "tidyHeatmap: an R package for 
+  modular heatmap production based on tidy principles." Journal of Open Source Software.
+  doi:10.21105/joss.02472.
 }

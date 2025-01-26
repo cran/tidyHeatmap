@@ -1,7 +1,7 @@
 Type: Package
 Package: tidyHeatmap
 Title: A Tidy Implementation of Heatmap
-Version: 1.8.1
+Version: 1.11.4
 Authors@R: 
     c(person(given = "Stefano",
            family = "Mangiola",
@@ -25,8 +25,8 @@ Description: This is a tidy implementation for heatmap.  At the
 License: GPL-3
 URL: https://www.r-project.org,
         https://github.com/stemangiola/tidyHeatmap
-BugReports: https://github.com/stemangiola/tidyHeatmap
-Depends: R (>= 3.6)
+BugReports: https://github.com/stemangiola/tidyHeatmap/issues
+Depends: R (>= 4.3.0)
 Imports: methods, stats, utils, dplyr (>= 0.8.5), magrittr (>= 1.5),
         tidyr (>= 1.0.3), rlang (>= 0.4.5), purrr (>= 0.3.3), tibble,
         ComplexHeatmap (>= 2.2.0), viridis (>= 0.5.1), circlize (>=
@@ -40,11 +40,11 @@ Biarch: true
 biocViews: AssayDomain, Infrastructure
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.1.2
+RoxygenNote: 7.3.2
 Language: en-US
 NeedsCompilation: no
-Packaged: 2022-05-20 03:14:40 UTC; mangiola.s
+Packaged: 2025-01-26 10:03:25 UTC; a1234450
 Author: Stefano Mangiola [aut, cre],
   Anthony Papenfuss [ctb]
 Repository: CRAN
-Date/Publication: 2022-05-20 07:20:03 UTC
+Date/Publication: 2025-01-26 10:20:02 UTC

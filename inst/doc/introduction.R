@@ -1,21 +1,36 @@
-## ---- eval=FALSE--------------------------------------------------------------
-#  
-#  devtools::install_github("stemangiola/tidyHeatmap")
-#  
-#  
+params <-
+list(demo_metadata = TRUE)
 
-## ---- eval=FALSE--------------------------------------------------------------
-#  
-#  install.packages("tidyHeatmap")
-#  
+## ----setup, include=FALSE-----------------------------------------------------
 
-## ---- echo=FALSE, include=FALSE-----------------------------------------------
+knitr::opts_chunk$set(
+  dpi = 150,
+  fig.retina = 1,
+  dev = "png",
+  dev.args = list(
+    png = list(type = "cairo-png", antialias = "subpixel" )
+  )
+)
+
+
+## ----install, eval=FALSE------------------------------------------------------
+# 
+# devtools::install_github("stemangiola/tidyHeatmap")
+# 
+# 
+
+## ----install2, eval=FALSE-----------------------------------------------------
+# 
+# install.packages("tidyHeatmap")
+# 
+
+## ----library, echo=FALSE, include=FALSE---------------------------------------
 library(dplyr)
 library(tidyr)
 library(tidyHeatmap)
 library(grid)
 
-## -----------------------------------------------------------------------------
+## ----setup data---------------------------------------------------------------
 mtcars_tidy <- 
 	mtcars |> 
 	as_tibble(rownames="Car name") |> 
@@ -28,18 +43,35 @@ mtcars_tidy <-
 
 mtcars_tidy
 
-## -----------------------------------------------------------------------------
+## ----heatmap, fig.width=10, fig.height=10-------------------------------------
 mtcars_heatmap <- 
 	mtcars_tidy |> 
 	heatmap(`Car name`, Property, Value,	scale = "row"	) |>
-	add_tile(hp)
+	annotation_tile(hp)
 
 mtcars_heatmap
 
-## ----eval=F-------------------------------------------------------------------
-#  mtcars_heatmap |> save_pdf("mtcars_heatmap.pdf")
+## ----save, eval=F-------------------------------------------------------------
+# mtcars_heatmap |> save_pdf("mtcars_heatmap.pdf")
 
-## -----------------------------------------------------------------------------
+## ----distance, fig.width=10, fig.height=10------------------------------------
+
+tidyHeatmap::pasilla |>
+	
+	heatmap(
+		.column = sample,
+		.row = symbol,
+		.value = `count normalised adjusted`,	
+		scale = "row",
+		
+		# Arguments passed to ComplexHeatmap 
+		clustering_distance_rows = "manhattan",
+		clustering_distance_columns = "manhattan",
+		clustering_method_rows = "ward.D",
+		clustering_method_columns = "ward.D"
+	) 
+
+## ----grouping, fig.width=10, fig.height=10------------------------------------
 # Make up more groupings
 mtcars_tidy_groupings = 
 	mtcars_tidy |>
@@ -48,9 +80,9 @@ mtcars_tidy_groupings =
 mtcars_tidy_groupings |> 
 	group_by(vs, property_group) |>
 	heatmap(`Car name`, Property, Value,	scale = "row"	) |>
-	add_tile(hp)
+	annotation_tile(hp)
 
-## -----------------------------------------------------------------------------
+## ----grouping2, fig.width=10, fig.height=10-----------------------------------
 mtcars_tidy_groupings |> 
 	group_by(vs, property_group) |>
 	heatmap(
@@ -65,16 +97,16 @@ mtcars_tidy_groupings |>
 			c("#b58b4c", "#74a6aa")
 		)
 	) |>
-	add_tile(hp)
+	annotation_tile(hp)
 
 
-## -----------------------------------------------------------------------------
+## ----split, fig.width=10, fig.height=10---------------------------------------
 mtcars_tidy |> 
 	heatmap(`Car name`, Property, Value,	scale = "row"	) |>
 	split_rows(2) |>
 	split_columns(2)
 
-## -----------------------------------------------------------------------------
+## ----split2, fig.width=10, fig.height=10--------------------------------------
 mtcars_tidy |> 
 	heatmap(
 		`Car name`, Property, Value,	
@@ -83,7 +115,7 @@ mtcars_tidy |>
 		column_km = 2
 	) 
 
-## -----------------------------------------------------------------------------
+## ----custom, fig.width=10, fig.height=10--------------------------------------
 mtcars_tidy |> 
 	heatmap(
 		`Car name`, 
@@ -93,7 +125,7 @@ mtcars_tidy |>
 		palette_value = c("red", "white", "blue")
 	)
 
-## -----------------------------------------------------------------------------
+## ----redblue, fig.width=10, fig.height=10-------------------------------------
 mtcars_tidy |> 
 	heatmap(
 		`Car name`, 
@@ -107,7 +139,7 @@ mtcars_tidy |>
 	)
 
 
-## -----------------------------------------------------------------------------
+## ----flexible, fig.width=10, fig.height=10------------------------------------
 mtcars_tidy |> 
 	heatmap(
 		`Car name`, 
@@ -117,7 +149,7 @@ mtcars_tidy |>
 		palette_value = circlize::colorRamp2(c(-2, -1, 0, 1, 2), viridis::magma(5))
 	)
 
-## -----------------------------------------------------------------------------
+## ----customtile, fig.width=10, fig.height=10----------------------------------
 mtcars_tidy |> 
 	heatmap(
 		`Car name`, 
@@ -127,10 +159,23 @@ mtcars_tidy |>
 	) |>
 	add_tile(
 		hp, 
+		palette = c("red", "white", "blue")
+	)
+
+## ----customtile2, fig.width=10, fig.height=10---------------------------------
+mtcars_tidy |> 
+	heatmap(
+		`Car name`, 
+		Property, 
+		Value,	
+		scale = "row"
+	) |>
+	annotation_tile(
+		hp, 
 		palette = circlize::colorRamp2(c(0, 100, 200, 300), viridis::magma(4))
 	)
 
-## -----------------------------------------------------------------------------
+## ----multiple, fig.width=10, fig.height=10------------------------------------
 tidyHeatmap::pasilla |>
 	group_by(location, type) |>
 	heatmap(
@@ -139,10 +184,10 @@ tidyHeatmap::pasilla |>
 		.value = `count normalised adjusted`,	
 		scale = "row"
 	) |>
-	add_tile(condition) |>
-	add_tile(activation)
+	annotation_tile(condition) |>
+	annotation_tile(activation)
 
-## -----------------------------------------------------------------------------
+## ----nolegend, fig.width=10, fig.height=10------------------------------------
 
 tidyHeatmap::pasilla |>
 	group_by(location, type) |>
@@ -153,14 +198,14 @@ tidyHeatmap::pasilla |>
 		scale = "row",
 		show_heatmap_legend = FALSE
 	) |>
-	add_tile(condition, show_legend = FALSE) |>
-	add_tile(activation, show_legend = FALSE)
+	annotation_tile(condition, show_legend = FALSE) |>
+	annotation_tile(activation, show_legend = FALSE)
 
-## -----------------------------------------------------------------------------
+## ----manyannotations, fig.width=10, fig.height=10-----------------------------
 # Create some more data points
 pasilla_plus <- 
 	tidyHeatmap::pasilla |>
-	dplyr::mutate(act = activation) |> 
+	dplyr::mutate(activation_2 = activation, activation_3 = activation) |> 
 	tidyr::nest(data = -sample) |>
 	dplyr::mutate(size = rnorm(n(), 4,0.5)) |>
 	dplyr::mutate(age = runif(n(), 50, 200)) |>
@@ -174,13 +219,14 @@ pasilla_plus |>
 		.value = `count normalised adjusted`,	
 		scale = "row"
 	) |>
-	add_tile(condition) |>
-	add_point(activation) |>
-	add_tile(act) |>
-	add_bar(size) |>
-	add_line(age)
+	annotation_tile(condition) |>
+	annotation_point(activation) |>
+	annotation_numeric(activation_3) |>
+	annotation_tile(activation_2) |>
+	annotation_bar(size) |>
+	annotation_line(age)
 
-## -----------------------------------------------------------------------------
+## ----size, fig.width=10, fig.height=10----------------------------------------
 pasilla_plus |>
 	heatmap(
 		.column = sample,
@@ -188,17 +234,20 @@ pasilla_plus |>
 		.value = `count normalised adjusted`,	
 		scale = "row"
 	) |>
-	add_tile(condition, size = unit(0.3, "cm"),	annotation_name_gp= gpar(fontsize = 8)) |>
-	add_point(activation, size = unit(0.3, "cm"),	annotation_name_gp= gpar(fontsize = 8)) |>
-	add_tile(act, size = unit(0.3, "cm"),	annotation_name_gp= gpar(fontsize = 8)) |>
-	add_bar(size, size = unit(0.3, "cm"),	annotation_name_gp= gpar(fontsize = 8)) |>
-	add_line(age, size = unit(0.3, "cm"),	annotation_name_gp= gpar(fontsize = 8))
+	annotation_tile(condition, size = unit(0.3, "cm"),	annotation_name_gp= gpar(fontsize = 8)) |>
+	annotation_point(activation, size = unit(0.3, "cm"),	annotation_name_gp= gpar(fontsize = 8)) |>
+	annotation_tile(activation_2, size = unit(0.3, "cm"),	annotation_name_gp= gpar(fontsize = 8)) |>
+	annotation_bar(size, size = unit(0.3, "cm"),	annotation_name_gp= gpar(fontsize = 8)) |>
+	annotation_line(age, size = unit(0.3, "cm"),	annotation_name_gp= gpar(fontsize = 8))
 
-## -----------------------------------------------------------------------------
+## ----layer, fig.width=10, fig.height=10---------------------------------------
 tidyHeatmap::pasilla |>
 	
 	# filter
 	filter(symbol %in% head(unique(tidyHeatmap::pasilla$symbol), n = 10)) |>
+	
+	# Add dynamic size
+	mutate(my_size = runif(n(), 1,5)) |> 
 	
 	heatmap(
 		.column = sample,
@@ -207,17 +256,52 @@ tidyHeatmap::pasilla |>
 		scale = "row"
 	) |> 
 	layer_point(
-		`count normalised adjusted log` > 6 & sample == "untreated3" 
+		`count normalised adjusted log` > 6 & sample == "untreated3"
+	) |>
+	layer_square(
+		`count normalised adjusted log` > 6 & sample == "untreated2",
+		.size = my_size
+	) |>
+	layer_arrow_up(
+		`count normalised adjusted log` > 6 & sample == "untreated1",
+		.size = 4
 	)
 
-## ---- warning=FALSE-----------------------------------------------------------
+## ----layertext, fig.width=10, fig.height=10-----------------------------------
+tidyHeatmap::pasilla |>
+	
+	# filter
+	filter(symbol %in% head(unique(tidyHeatmap::pasilla$symbol), n = 10)) |>
+	
+	# Add dynamic text
+	mutate(my_text = "mt", my_size = 7) |> 
+	
+	# Plot
+	heatmap(
+		.column = sample,
+		.row = symbol,
+		.value = `count normalised adjusted`,	
+		scale = "row"
+	) |> 
+	layer_text(
+		`count normalised adjusted log` > 6 & sample == "untreated3", 
+		.value = "a", 
+		.size = 15
+	) |> 
+	layer_text(
+	`count normalised adjusted log` > 6 & sample == "untreated2", 
+	.value = my_text,
+	.size = my_size
+)
+
+## ----sidebyside, warning=FALSE, fig.width=10, fig.height=10-------------------
 
 p_heatmap = heatmap(mtcars_tidy, `Car name`, Property, Value, scale = "row") 
 
 p_heatmap + p_heatmap
 
 
-## -----------------------------------------------------------------------------
+## ----borders, fig.width=10, fig.height=10-------------------------------------
 mtcars_tidy |> 
 	heatmap(
 		`Car name`, Property, Value,	
@@ -225,7 +309,7 @@ mtcars_tidy |>
 		rect_gp = grid::gpar(col = "#161616", lwd = 0.5)
 	) 
 
-## -----------------------------------------------------------------------------
+## ----droprow, fig.width=10, fig.height=10-------------------------------------
 mtcars_tidy |> 
 	heatmap(
 		`Car name`, Property, Value,	
@@ -233,19 +317,19 @@ mtcars_tidy |>
 		cluster_rows = FALSE
 	) 
 
-## -----------------------------------------------------------------------------
+## ----reorder, fig.width=10, fig.height=10-------------------------------------
 library(forcats)
 mtcars_tidy |> 
-	mutate(`Car name` = fct_reorder(`Car name`, `Car name`, .desc = TRUE)) %>% 
+	mutate(`Car name` = forcats::fct_reorder(`Car name`, `Car name`, .desc = TRUE)) %>% 
 	heatmap(
 		`Car name`, Property, Value,	
 		scale = "row", 
 		cluster_rows = FALSE
 	) 
 
-## -----------------------------------------------------------------------------
+## ----sizedendro, fig.width=10, fig.height=10----------------------------------
 mtcars_tidy |> 
-	mutate(`Car name` = fct_reorder(`Car name`, `Car name`, .desc = TRUE)) %>% 
+	mutate(`Car name` = forcats::fct_reorder(`Car name`, `Car name`, .desc = TRUE)) %>% 
 	heatmap(
 		`Car name`, Property, Value,	
 		scale = "row", 
@@ -253,9 +337,9 @@ mtcars_tidy |>
 		row_dend_width = unit(0.2, "cm")
 	) 
 
-## -----------------------------------------------------------------------------
+## ----sizecolumns, fig.width=10, fig.height=10---------------------------------
 mtcars_tidy |> 
-	mutate(`Car name` = fct_reorder(`Car name`, `Car name`, .desc = TRUE)) %>% 
+	mutate(`Car name` = forcats::fct_reorder(`Car name`, `Car name`, .desc = TRUE)) %>% 
 	heatmap(
 		`Car name`, Property, Value,	
 		scale = "row", 
@@ -265,13 +349,31 @@ mtcars_tidy |>
 		row_title_gp = gpar(fontsize = 7)
 	) 
 
-## -----------------------------------------------------------------------------
+## ----align_numeric, fig.width=10, fig.height=10-------------------------------
+mtcars_tidy |> 
+	mutate(`Car name` = forcats::fct_reorder(`Car name`, `Car name`, .desc = TRUE)) %>% 
+	heatmap(
+		`Car name`, Property, Value,	
+		scale = "row"
+	) |> 
+  annotation_numeric(hp, align_to="right")
+
+## ----sidelegend, fig.width=10, fig.height=10----------------------------------
 
 heatmap(mtcars_tidy, `Car name`, Property, Value, scale = "row"	) %>%
 	as_ComplexHeatmap() %>%
 	ComplexHeatmap::draw(heatmap_legend_side = "left"	)
 
-## -----------------------------------------------------------------------------
+## ----title, fig.width=10, fig.height=10---------------------------------------
+mtcars_tidy |> 
+    heatmap(`Car name`, Property, Value,    scale = "row"   ) |>
+    as_ComplexHeatmap() |>
+    ComplexHeatmap::draw(
+        column_title = "TITLE", 
+        column_title_gp = gpar(fontsize = 16)
+    )
+
+## ----patchworkintegrate, fig.width=10, fig.height=10--------------------------
 library(ggplot2)
 library(patchwork)
 
@@ -284,13 +386,25 @@ p_heatmap =
 		row_names_gp = gpar(fontsize = 7)
 	) 
 
-p_ggplot = tibble(value = 1:10) %>% ggplot(aes(value)) + geom_density()
+p_ggplot = data.frame(value = 1:10) |> ggplot(aes(value)) + geom_density()
 
 wrap_heatmap(p_heatmap) + 
 	p_ggplot +
-	wrap_heatmap(p_heatmap) + 
+	
+	# Add padding for better aesthetics
+	wrap_heatmap(
+		p_heatmap,
+		padding = grid::unit(c(-30, -0, -0, -10), "points" ),
+		clip = FALSE
+	) + 
 	plot_layout(width = c(1, 0.3, 1))
 
+
+## ----title2, fig.width=10, fig.height=10--------------------------------------
+mtcars_tidy |> 
+    heatmap(`Car name`, Property, Value,  scale = "row" ) |>
+    wrap_heatmap() +
+		ggplot2::ggtitle("TITLE")
 
 ## -----------------------------------------------------------------------------
 sessionInfo()

@@ -7,6 +7,9 @@
 \alias{heatmap,tbl-method}
 \alias{heatmap,tbl_df-method}
 \title{Creates a  `InputHeatmap` object from `tbl_df` on evaluation creates a `ComplexHeatmap`}
+\source{
+[Mangiola and Papenfuss., 2020](https://joss.theoj.org/papers/10.21105/joss.02472)
+}
 \usage{
 heatmap(
   .data,
@@ -61,7 +64,7 @@ heatmap_(
 )
 }
 \arguments{
-\item{.data}{A `tbl_df` formatted as | <ELEMENT> | <FEATURE> | <VALUE> | <...> |}
+\item{.data}{A `tbl_df` formatted as | <.row> | <.column> | <.value> | <...> |}
 
 \item{.row}{The name of the column vertically presented in the heatmap}
 
@@ -100,14 +103,18 @@ This function takes a tbl as an input and creates a `ComplexHeatmap` plot. The i
 }
 \examples{
 
-library(dplyr)
 
-tidyHeatmap::N52 \%>\%
-group_by( `Cell type`) \%>\%
-tidyHeatmap::heatmap(
- .row = symbol_ct,
- .column = UBR,
- .value = `read count normalised log`,
-)
+tidyHeatmap::N52 |>
+  dplyr::group_by( `Cell type`) |>
+  tidyHeatmap::heatmap(
+   .row = symbol_ct,
+   .column = UBR,
+   .value = `read count normalised log`,
+  )
 
+}
+\references{
+Mangiola, S. and Papenfuss, A.T., 2020. "tidyHeatmap: an R package for 
+  modular heatmap production based on tidy principles." Journal of Open Source Software.
+  doi:10.21105/joss.02472.
 }

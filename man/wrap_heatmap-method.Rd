@@ -5,13 +5,17 @@
 \alias{wrap_heatmap}
 \alias{wrap_heatmap,InputHeatmap-method}
 \title{Wrap tidyHeatmap (ComplexHeatmap) in a patchwork-compliant patch}
+\source{
+[Mangiola and Papenfuss., 2020](https://joss.theoj.org/papers/10.21105/joss.02472)
+}
 \usage{
 wrap_heatmap(
   panel = NULL,
   plot = NULL,
   full = NULL,
   clip = TRUE,
-  ignore_tag = FALSE
+  ignore_tag = FALSE,
+  padding = NULL
 )
 
 \S4method{wrap_heatmap}{InputHeatmap}(
@@ -19,7 +23,8 @@ wrap_heatmap(
   plot = NULL,
   full = NULL,
   clip = TRUE,
-  ignore_tag = FALSE
+  ignore_tag = FALSE,
+  padding = NULL
 )
 }
 \arguments{
@@ -31,6 +36,8 @@ nativeRaster object to add to the respective area.}
 \item{ignore_tag}{Should tags be ignored for this patch. This is relevant
 when using automatic tagging of plots and the content of the patch does not
 qualify for a tag.}
+
+\item{padding}{A grid::unit object. It defined the padding distance for the plot. It is helpful when the heatmap is assembled with other ggplots through patchwork.}
 }
 \value{
 A wrapped_patch object
@@ -56,5 +63,9 @@ tidyHeatmap::heatmap(
  .value = `read count normalised log`,
 ) |> 
 wrap_heatmap()
-
+}
+\references{
+Mangiola, S. and Papenfuss, A.T., 2020. "tidyHeatmap: an R package for 
+  modular heatmap production based on tidy principles." Journal of Open Source Software.
+  doi:10.21105/joss.02472.
 }
